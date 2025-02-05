@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Facile/Difficile, Statistiche e Reset con Trasformazione Bass</title>
+  <title>Esercizio di Solfeggio - Modalità Facile/Difficile, Statistiche e Reset</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
@@ -227,18 +227,26 @@
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
     let currentNote = "";
     let currentClef = "treble";
-    let currentOctave = 4;  // verrà scelto in base alla modalità e alla chiave
+    let currentOctave = 4;  // verrà deciso in base alla modalità e alla chiave
     
-    // Mappatura per la trasformazione in bass: trasforma la risposta
-    // Se in bass clef la nota visualizzata è "C" (Do), la risposta corretta diventa "E" (Mi), e così via.
-    const bassMapping = {
-      "C": "E",
-      "D": "F",
-      "E": "G",
-      "F": "A",
-      "G": "B",
-      "A": "C",
-      "B": "D"
+    // Mappature per la modalità "easy"
+    const easyMappingTreble = {
+      "C": 5,  // Do sullo spazio centrale (C5)
+      "D": 5,  // Re sul quarto rigo (D5)
+      "E": 5,  // Mi sul quarto spazio (E5)
+      "F": 5,  // Fa sulla quinta riga (F5)
+      "G": 4,  // Sol sul secondo rigo (G4)
+      "A": 4,  // La sul secondo spazio (A4)
+      "B": 4   // Si sul terzo rigo (B4)
+    };
+    const easyMappingBass = {
+      "C": 3,  // Do nel secondo spazio (C3)
+      "D": 3,  // Re sul terzo rigo (D3)
+      "E": 3,  // Mi nel terzo spazio (E3)
+      "F": 3,  // Fa sulla quarta riga (F3)
+      "G": 2,  // Sol sul primo rigo (G2)
+      "A": 3,  // La sulla quinta riga (A3)
+      "B": 2   // Si sul secondo rigo (B2)
     };
     
     const VF = Vex.Flow;
@@ -247,28 +255,21 @@
     // Funzione per disegnare la nota sul pentagramma
     function drawNote(note, clef, octave) {
       notationDiv.innerHTML = "";
-      
-      // Impostiamo il renderer in base alle dimensioni del wrapper (220x200)
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
       renderer.resize(220, 200);
       const context = renderer.getContext();
-      
-      // Posizioniamo il pentagramma a y=50 per avere più spazio in verticale
+      // Posizioniamo il pentagramma a y = 50 per avere più spazio in verticale
       const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
-      
-      // Costruiamo la nota, ad esempio "c/4" oppure "c/5"
       const key = note.toLowerCase() + "/" + octave;
       const staveNote = new VF.StaveNote({ keys: [key], duration: "q" });
-      
       const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
       voice.addTickable(staveNote);
-      
       new VF.Formatter().joinVoices([voice]).format([voice], 100);
       voice.draw(context, stave);
     }
     
-    // Genera una nota casuale e sceglie l'ottava in base alla modalità e alla chiave
+    // Genera una nota casuale e decide l'ottava in base alla modalità e alla chiave
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
@@ -281,7 +282,7 @@
         currentClef = clefChoice;
       }
       
-      // Aggiorna la modalità in base alla selezione radio
+      // Aggiorna la modalità in base al radio group
       const radios = document.getElementsByName("difficulty");
       radios.forEach(radio => {
         if (radio.checked) {
@@ -289,19 +290,21 @@
         }
       });
       
-      // Se la modalità è "easy", fissiamo l'ottava; se "hard", usiamo due possibilità
+      // Determina l'ottava in base alla modalità e alla chiave
       if (difficulty === "easy") {
         if (currentClef === "treble") {
-          currentOctave = 4;
+          currentOctave = easyMappingTreble[currentNote];
         } else if (currentClef === "bass") {
-          currentOctave = 3;
+          currentOctave = easyMappingBass[currentNote];
         }
-      } else { // modalità "hard"
+      } else { // modalità "hard": usiamo un intervallo più ampio
         if (currentClef === "treble") {
-          const octaves = [4, 5];
+          // Per il violino "hard": 2 tagli sopra e sotto il pentagramma → possibili ottave: 4, 5, 6
+          const octaves = [4, 5, 6];
           currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
         } else if (currentClef === "bass") {
-          const octaves = [3, 4];
+          // Per il basso "hard": 2 tagli sopra e sotto il pentagramma → possibili ottave: 2, 3, 4
+          const octaves = [2, 3, 4];
           currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
         }
       }
@@ -318,13 +321,9 @@
         `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
     }
     
-    // Controlla se la risposta è corretta (se in bass clef trasforma la risposta secondo bassMapping)
+    // Controlla se la risposta è corretta (ignorando l'ottava)
     function checkAnswer(selectedKey) {
-      let expectedAnswer = currentNote;
-      if (currentClef === "bass") {
-        expectedAnswer = bassMapping[currentNote];
-      }
-      if (selectedKey === expectedAnswer) {
+      if (selectedKey === currentNote) {
         document.getElementById("result").textContent = "Corretto!";
         correctCount++;
         updateStats();
