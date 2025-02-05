@@ -75,10 +75,10 @@
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    /* Wrapper fisso per il pentagramma */
+    /* Wrapper fisso per il pentagramma: altezza aumentata a 200px */
     #notationWrapper {
       width: 220px;
-      height: 150px;
+      height: 200px;
       margin: 20px auto;
       border: 1px solid #ddd;
       overflow: hidden;
@@ -203,13 +203,14 @@
       // Svuota solo il contenuto interno, mantenendo le dimensioni del wrapper
       notationDiv.innerHTML = "";
       
-      // Crea il renderer SVG all'interno del div fisso (220x150)
+      // Crea il renderer SVG all'interno del div fisso (220x200)
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
-      renderer.resize(220, 150);
+      renderer.resize(220, 200);
       const context = renderer.getContext();
       
-      // Crea il pentagramma con la chiave selezionata
-      const stave = new VF.Stave(10, 40, 200);
+      // Crea il pentagramma con la chiave selezionata.
+      // Ho impostato la y a 50 per dare più spazio in verticale
+      const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
       
       // Costruisce la nota, ad es. "c/4" o "c/5" per Do
