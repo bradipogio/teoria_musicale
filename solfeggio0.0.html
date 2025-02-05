@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Statistiche e Reset</title>
+  <title>Esercizio di Solfeggio - Statistiche, Reset e 2 Ottave</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
@@ -154,7 +154,6 @@
     
     <!-- Immagine di riferimento -->
     <div id="referenceContainer">
-      <!-- Sostituisci l'URL con la tua immagine di riferimento -->
       <img src="https://github.com/bradipogio/teoria_musicale/blob/main/Schermata-2021-01-19-alle-10.03.13-1030x299.png?raw=true" alt="Riferimento">
     </div>
     
@@ -194,12 +193,13 @@
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
     let currentNote = "";
     let currentClef = "treble";
+    let currentOctave = 4;  // verrà scelto casualmente
     
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
     // Funzione per disegnare la nota sul pentagramma
-    function drawNote(note, clef) {
+    function drawNote(note, clef, octave) {
       // Svuota solo il contenuto interno, mantenendo le dimensioni del wrapper
       notationDiv.innerHTML = "";
       
@@ -212,8 +212,8 @@
       const stave = new VF.Stave(10, 40, 200);
       stave.addClef(clef).setContext(context).draw();
       
-      // Costruisce la nota (es. "c/4" per Do)
-      const key = note.toLowerCase() + "/4";
+      // Costruisce la nota, ad es. "c/4" o "c/5" per Do
+      const key = note.toLowerCase() + "/" + octave;
       const staveNote = new VF.StaveNote({ keys: [key], duration: "q" });
       
       // Aggiunge la nota a una voce
@@ -225,7 +225,7 @@
       voice.draw(context, stave);
     }
     
-    // Genera una nota casuale e la disegna, utilizzando la chiave scelta
+    // Genera una nota casuale, scegliendo anche casualmente l'ottava in base alla chiave
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
@@ -238,7 +238,17 @@
         currentClef = clefChoice;
       }
       
-      drawNote(currentNote, currentClef);
+      // Seleziona due possibili ottave in base alla chiave:
+      // Per il Violino (treble) usiamo le ottave 4 e 5; per il Basso (bass) le ottave 3 e 4.
+      if (currentClef === "treble") {
+        const octaves = [4, 5];
+        currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
+      } else if (currentClef === "bass") {
+        const octaves = [3, 4];
+        currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
+      }
+      
+      drawNote(currentNote, currentClef, currentOctave);
       document.getElementById("result").textContent = "";
     }
     
@@ -249,7 +259,7 @@
       document.getElementById("scoreInfo").textContent = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
     }
     
-    // Controlla se la risposta selezionata è corretta
+    // Controlla se la risposta selezionata è corretta (ignora l'ottava)
     function checkAnswer(selectedKey) {
       if (selectedKey === currentNote) {
         document.getElementById("result").textContent = "Corretto!";
