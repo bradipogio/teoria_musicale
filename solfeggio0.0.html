@@ -2,8 +2,8 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Layout Responsive con Flex</title>
-  <!-- Includiamo VexFlow da CDN -->
+  <title>Esercizio di Solfeggio - Statistiche e Reset</title>
+  <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -14,9 +14,6 @@
       margin: 0;
       padding: 0;
     }
-    html, body {
-      height: 100%;
-    }
     body {
       font-family: 'Roboto', sans-serif;
       background-color: #f7f7f7;
@@ -25,32 +22,31 @@
       align-items: center;
       padding: 20px;
     }
-    /* Contenitore principale, flessibile e centrato */
     .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 800px;
       background: #fff;
-      padding: 20px;
+      padding: 30px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
     }
     h1 {
       margin-bottom: 20px;
-      font-size: 2rem;
-      text-align: center;
+      font-size: 28px;
+      font-weight: 500;
     }
-    /* Contenitore dei controlli (select e bottone riferimento) */
+    /* Controlli: dropdown per la chiave e bottone per il riferimento */
     .controls {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       align-items: center;
       gap: 10px;
-      width: 100%;
       margin-bottom: 20px;
+    }
+    label {
+      font-size: 1rem;
     }
     select, button {
       padding: 10px 15px;
@@ -68,68 +64,75 @@
     button:hover {
       background: #f0f0f0;
     }
-    /* Area pentagramma: usiamo un contenitore flessibile che si ridimensiona */
-    #notation {
-      border: 1px solid #ddd;
+    /* Contenitore dell'immagine di riferimento */
+    #referenceContainer {
+      margin-bottom: 20px;
+      display: none;
+    }
+    #referenceContainer img {
       width: 100%;
       max-width: 600px;
-      /* Impostiamo un aspect ratio per mantenere le proporzioni */
-      aspect-ratio: 600 / 300;
-      margin: 20px 0;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    /* Bottoni delle risposte in fila, con wrapping se necessario */
+    /* Wrapper fisso per il pentagramma */
+    #notationWrapper {
+      width: 220px;
+      height: 150px;
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    /* Area in cui VexFlow disegna il pentagramma */
+    #notation {
+      width: 100%;
+      height: 100%;
+    }
+    /* Bottoni per le risposte (note) */
     .answer-buttons {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 10px;
-      width: 100%;
-      margin-bottom: 15px;
+      margin: 15px 0;
     }
     .answer-button {
-      flex: 1 1 calc(14% - 10px);
-      min-width: 50px;
-      padding: 10px;
+      padding: 10px 15px;
+      font-size: 16px;
       border: none;
       border-radius: 4px;
       background: #007BFF;
       color: #fff;
       cursor: pointer;
       transition: background 0.3s ease;
+      flex: 1 1 auto;
+      margin: 5px;
     }
     .answer-button:hover {
       background: #0056b3;
     }
-    /* Feedback e punteggio */
-    #result, #score {
-      margin-top: 15px;
+    /* Feedback */
+    #result {
       font-weight: 500;
+      margin-top: 15px;
+      font-size: 1.2rem;
     }
-    /* Immagine di riferimento */
-    #referenceContainer {
+    /* Sezione statistiche */
+    .stats {
       margin-top: 20px;
-      display: none;
-      width: 100%;
     }
-    #referenceContainer img {
-      width: 100%;
-      max-width: 600px;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    .stats p {
+      font-size: 1rem;
+      margin: 5px 0;
     }
-    /* Responsive: per schermi piccoli */
+    /* Responsive per schermi piccoli */
     @media (max-width: 480px) {
       h1 {
         font-size: 1.5rem;
       }
-      select, button {
+      .answer-button, select, button {
         font-size: 0.9rem;
         padding: 8px 12px;
-      }
-      .answer-button {
-        font-size: 0.9rem;
-        padding: 8px;
-        min-width: 40px;
       }
     }
   </style>
@@ -137,6 +140,8 @@
 <body>
   <div class="container">
     <h1>Esercizio di Solfeggio</h1>
+    
+    <!-- Controlli: selezione della chiave e bottone per il riferimento -->
     <div class="controls">
       <label for="clefSelect">Seleziona chiave:</label>
       <select id="clefSelect">
@@ -146,11 +151,19 @@
       </select>
       <button id="toggleReference">Mostra Riferimento</button>
     </div>
+    
+    <!-- Immagine di riferimento -->
     <div id="referenceContainer">
-      <!-- Sostituisci l'URL con quello della tua immagine di riferimento -->
-      <img src="https://via.placeholder.com/600x300?text=Riferimento" alt="Riferimento">
+      <!-- Sostituisci l'URL con la tua immagine di riferimento -->
+      <img src="Schermata-2021-01-19-alle-10.03.13-1030x299.png" alt="Riferimento">
     </div>
-    <div id="notation"></div>
+    
+    <!-- Wrapper fisso per il pentagramma -->
+    <div id="notationWrapper">
+      <div id="notation"></div>
+    </div>
+    
+    <!-- Bottoni per le risposte -->
     <div class="answer-buttons">
       <button class="answer-button" data-key="C">Do</button>
       <button class="answer-button" data-key="D">Re</button>
@@ -160,94 +173,96 @@
       <button class="answer-button" data-key="A">La</button>
       <button class="answer-button" data-key="B">Si</button>
     </div>
+
+    <!-- Sezione statistiche e reset -->
+    <div class="stats">
+      <p id="scoreInfo">Corrette: 0, Sbagliate: 0, Percentuale: 0%</p>
+      <button id="resetButton">Reset</button>
+    </div>
+        
+    <!-- Feedback -->
     <p id="result"></p>
-    <p id="score">Punteggio: 0</p>
+    
   </div>
-
+  
   <script>
-    // Array delle note (nome italiano e tasto corrispondente)
-    const notes = [
-      { italian: "Do", key: "C" },
-      { italian: "Re", key: "D" },
-      { italian: "Mi", key: "E" },
-      { italian: "Fa", key: "F" },
-      { italian: "Sol", key: "G" },
-      { italian: "La", key: "A" },
-      { italian: "Si", key: "B" }
-    ];
-
-    // Mappatura per VexFlow (in questo esempio usiamo la stessa per violino e basso)
-    const noteMapping = {
-      treble: {
-        C: "c/4",
-        D: "d/4",
-        E: "e/4",
-        F: "f/4",
-        G: "g/4",
-        A: "a/4",
-        B: "b/4"
-      },
-      bass: {
-        C: "c/4",
-        D: "d/4",
-        E: "e/4",
-        F: "f/4",
-        G: "g/4",
-        A: "a/4",
-        B: "b/4"
-      }
-    };
-
-    let currentNote = null;
+    // Variabili per le statistiche
+    let correctCount = 0;
+    let wrongCount = 0;
+    
+    // Array delle note (corrispondenti ai nomi dei tasti)
+    const notes = ["C", "D", "E", "F", "G", "A", "B"];
+    let currentNote = "";
     let currentClef = "treble";
-    let score = 0;
-
+    
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
-
-    function clearNotation() {
+    
+    // Funzione per disegnare la nota sul pentagramma
+    function drawNote(note, clef) {
+      // Svuota solo il contenuto interno, mantenendo le dimensioni del wrapper
       notationDiv.innerHTML = "";
-    }
-
-    // Disegna la nota usando VexFlow. Il renderer viene ridimensionato in base alle dimensioni massime del container.
-    function drawNote(noteKey, clef) {
-      clearNotation();
-      // Impostiamo una larghezza e altezza che possano scalare bene (corrispondono all'aspect ratio definito nel CSS)
+      
+      // Crea il renderer SVG all'interno del div fisso (220x150)
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
-      renderer.resize(600, 300);
+      renderer.resize(220, 150);
       const context = renderer.getContext();
-      const stave = new VF.Stave(10, 100, 580);
+      
+      // Crea il pentagramma con la chiave selezionata
+      const stave = new VF.Stave(10, 40, 200);
       stave.addClef(clef).setContext(context).draw();
-      const keyString = noteMapping[clef][noteKey];
-      const staveNote = new VF.StaveNote({ keys: [keyString], duration: "q" });
+      
+      // Costruisce la nota (es. "c/4" per Do)
+      const key = note.toLowerCase() + "/4";
+      const staveNote = new VF.StaveNote({ keys: [key], duration: "q" });
+      
+      // Aggiunge la nota a una voce
       const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
       voice.addTickable(staveNote);
-      new VF.Formatter().joinVoices([voice]).format([voice], 500);
+      
+      // Formatizza e disegna la nota
+      new VF.Formatter().joinVoices([voice]).format([voice], 100);
       voice.draw(context, stave);
     }
-
+    
+    // Genera una nota casuale e la disegna, utilizzando la chiave scelta
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
+      
+      // Legge la scelta della chiave dal menu a tendina
       const clefChoice = document.getElementById("clefSelect").value;
-      currentClef = clefChoice === "random"
-        ? (Math.random() < 0.5 ? "treble" : "bass")
-        : clefChoice;
-      drawNote(currentNote.key, currentClef);
+      if (clefChoice === "random") {
+        currentClef = Math.random() < 0.5 ? "treble" : "bass";
+      } else {
+        currentClef = clefChoice;
+      }
+      
+      drawNote(currentNote, currentClef);
       document.getElementById("result").textContent = "";
     }
-
+    
+    // Aggiorna le statistiche
+    function updateStats() {
+      const total = correctCount + wrongCount;
+      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+      document.getElementById("scoreInfo").textContent = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
+    }
+    
+    // Controlla se la risposta selezionata è corretta
     function checkAnswer(selectedKey) {
-      if (selectedKey === currentNote.key) {
+      if (selectedKey === currentNote) {
         document.getElementById("result").textContent = "Corretto!";
-        score++;
-        document.getElementById("score").textContent = "Punteggio: " + score;
-        setTimeout(generateRandomNote, 1000);
+        correctCount++;
+        updateStats();
+        setTimeout(generateRandomNote, 100);
       } else {
         document.getElementById("result").textContent = "Sbagliato, riprova!";
+        wrongCount++;
+        updateStats();
       }
     }
-
+    
     // Event listener per i bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
     answerButtons.forEach(button => {
@@ -256,7 +271,7 @@
         checkAnswer(selectedKey);
       });
     });
-
+    
     // Gestione del bottone per mostrare/chiudere l'immagine di riferimento
     const toggleReferenceButton = document.getElementById("toggleReference");
     const referenceContainer = document.getElementById("referenceContainer");
@@ -269,7 +284,19 @@
         toggleReferenceButton.textContent = "Mostra Riferimento";
       }
     });
-
+    
+    // Gestione del bottone di reset
+    document.getElementById("resetButton").addEventListener("click", function() {
+      correctCount = 0;
+      wrongCount = 0;
+      updateStats();
+      document.getElementById("result").textContent = "";
+      generateRandomNote();
+    });
+    
+    // Assicuriamoci che l'immagine di riferimento sia nascosta all'avvio
+    referenceContainer.style.display = "none";
+    
     // Genera la prima nota al caricamento della pagina
     generateRandomNote();
   </script>
