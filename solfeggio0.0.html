@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Modalità Facile/Difficile, Statistiche e Reset</title>
+  <title>Esercizio di Solfeggio - Facile/Difficile, Statistiche e Reset con Trasformazione Bass</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
@@ -36,7 +36,7 @@
       font-size: 28px;
       font-weight: 500;
     }
-    /* Controlli: dropdown per la chiave, radio per la difficoltà e bottone per il riferimento */
+    /* Controlli: dropdown per la chiave, radio group per la difficoltà e bottone per il riferimento */
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -229,6 +229,18 @@
     let currentClef = "treble";
     let currentOctave = 4;  // verrà scelto in base alla modalità e alla chiave
     
+    // Mappatura per la trasformazione in bass: trasforma la risposta
+    // Se in bass clef la nota visualizzata è "C" (Do), la risposta corretta diventa "E" (Mi), e così via.
+    const bassMapping = {
+      "C": "E",
+      "D": "F",
+      "E": "G",
+      "F": "A",
+      "G": "B",
+      "A": "C",
+      "B": "D"
+    };
+    
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
@@ -306,9 +318,13 @@
         `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
     }
     
-    // Controlla se la risposta è corretta (ignora l'ottava)
+    // Controlla se la risposta è corretta (se in bass clef trasforma la risposta secondo bassMapping)
     function checkAnswer(selectedKey) {
-      if (selectedKey === currentNote) {
+      let expectedAnswer = currentNote;
+      if (currentClef === "bass") {
+        expectedAnswer = bassMapping[currentNote];
+      }
+      if (selectedKey === expectedAnswer) {
         document.getElementById("result").textContent = "Corretto!";
         correctCount++;
         updateStats();
