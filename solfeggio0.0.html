@@ -27,11 +27,7 @@
       width: 100%;
       text-align: center;
     }
-    h1 {
-      margin-bottom: 20px;
-      font-size: 28px;
-      font-weight: 500;
-    }
+    h1 { margin-bottom: 20px; font-size: 28px; font-weight: 500; }
     /* Controlli: dropdown per la chiave, radio group per la difficoltà e bottone per il riferimento */
     .controls {
       display: flex;
@@ -116,11 +112,7 @@
     }
     .answer-button:hover { background: #0056b3; }
     /* Feedback */
-    #result {
-      font-weight: 500;
-      margin-top: 15px;
-      font-size: 1.2rem;
-    }
+    #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
     /* Sezione statistiche */
     .stats { margin-top: 20px; }
     .stats p { font-size: 1rem; margin: 5px 0; }
@@ -138,7 +130,7 @@
   <div class="container">
     <h1>Esercizio di Solfeggio</h1>
     
-    <!-- Controlli: dropdown per la chiave, radio group per la difficoltà e bottone per il riferimento -->
+    <!-- Controlli -->
     <div class="controls">
       <label for="clefSelect">Seleziona chiave:</label>
       <select id="clefSelect">
@@ -163,12 +155,12 @@
       <img src="https://github.com/bradipogio/teoria_musicale/blob/main/Schermata-2021-01-19-alle-10.03.13-1030x299.png?raw=true" alt="Riferimento">
     </div>
     
-    <!-- Wrapper fisso per il pentagramma -->
+    <!-- Pentagramma -->
     <div id="notationWrapper">
       <div id="notation"></div>
     </div>
     
-    <!-- Bottoni per le risposte -->
+    <!-- Bottoni per le risposte (le lettere delle note) -->
     <div class="answer-buttons">
       <button class="answer-button" data-key="C">Do</button>
       <button class="answer-button" data-key="D">Re</button>
@@ -178,8 +170,8 @@
       <button class="answer-button" data-key="A">La</button>
       <button class="answer-button" data-key="B">Si</button>
     </div>
-    
-    <!-- Sezione statistiche e reset -->
+
+    <!-- Statistiche e Reset -->
     <div class="stats">
       <p id="scoreInfo">Corrette: 0, Sbagliate: 0, Percentuale: 0%</p>
       <button id="resetButton">Reset</button>
@@ -190,40 +182,42 @@
   </div>
   
   <script>
-    // Variabili per le statistiche
+    // Variabili statistiche
     let correctCount = 0;
     let wrongCount = 0;
     
     // Variabile per la difficoltà ("easy" o "hard")
     let difficulty = "easy";
     
-    // Array (le note, in maiuscolo)
+    // Array delle lettere delle note
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
     let currentNote = "";
     let currentClef = "treble";
-    let currentPitch = ""; // stringa completa, es. "c/5"
+    let currentPitch = ""; // es. "c/4"
     
-    // Mappature per modalità FACILE
+    // Mapping per Violino FACILE: range [C4, F5]
     const trebleEasyMapping = {
-      "C": "c/5",
-      "D": "d/5",
-      "E": "e/5",
+      "C": "c/4",
+      "D": "d/4",
+      "E": "e/4",
       "F": "f/5",
       "G": "g/4",
       "A": "a/4",
       "B": "b/4"
     };
+    
+    // Mapping per Basso FACILE: range [E2, A3]
     const bassEasyMapping = {
       "C": "c/3",
       "D": "d/3",
       "E": "e/2",
-      "F": "f/3",
+      "F": "f/2",
       "G": "g/2",
       "A": "a/3",
       "B": "b/2"
     };
     
-    // Mappature per modalità DIFFICILE
+    // Mapping per Violino DIFFICILE: range [F3, C6]
     const trebleHardMapping = {
       "C": ["c/4", "c/5", "c/6"],
       "D": ["d/4", "d/5"],
@@ -233,26 +227,28 @@
       "A": ["a/3", "a/4", "a/5"],
       "B": ["b/3", "b/4", "b/5"]
     };
+    
+    // Mapping per Basso DIFFICILE: range [A3, E6]
     const bassHardMapping = {
-      "A": ["a/1", "a/2", "a/3", "a/4", "a/5"],
-      "B": ["b/1", "b/2", "b/3", "b/4", "b/5"],
-      "C": ["c/2", "c/3", "c/4", "c/5", "c/6"],
-      "D": ["d/2", "d/3", "d/4", "d/5", "d/6"],
-      "E": ["e/2", "e/3", "e/4", "e/5", "e/6"],
-      "F": ["f/2", "f/3", "f/4", "f/5"],
-      "G": ["g/2", "g/3", "g/4", "g/5"]
+      "A": ["a/3", "a/4", "a/5"],
+      "B": ["b/3", "b/4", "b/5"],
+      "C": ["c/4", "c/5", "c/6"],
+      "D": ["d/4", "d/5", "d/6"],
+      "E": ["e/4", "e/5", "e/6"],
+      "F": ["f/4", "f/5"],
+      "G": ["g/4", "g/5"]
     };
     
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
-    // Funzione per disegnare la nota utilizzando direttamente la stringa di pitch
+    // Funzione per disegnare la nota usando il pitch (es. "c/4") e la clef
     function drawNoteWithPitch(pitch, clef) {
       notationDiv.innerHTML = "";
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
       renderer.resize(220, 200);
       const context = renderer.getContext();
-      // Posizioniamo il pentagramma a y = 50 per dare più spazio verticale
+      // Posiziona il pentagramma a y = 50 per maggiore spazio verticale
       const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
       const staveNote = new VF.StaveNote({ keys: [pitch], duration: "q" });
@@ -262,7 +258,7 @@
       voice.draw(context, stave);
     }
     
-    // Genera una nota casuale e determina il pitch in base alla modalità e alla clef
+    // Funzione per generare una nota casuale e determinare il pitch in base alla modalità e clef
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
@@ -277,11 +273,7 @@
       
       // Legge la scelta della difficoltà dal radio group
       const radios = document.getElementsByName("difficulty");
-      radios.forEach(radio => {
-        if (radio.checked) {
-          difficulty = radio.value;
-        }
-      });
+      radios.forEach(radio => { if (radio.checked) difficulty = radio.value; });
       
       // Determina il pitch in base alla difficoltà e alla clef
       if (difficulty === "easy") {
@@ -290,7 +282,7 @@
         } else { // bass
           currentPitch = bassEasyMapping[currentNote];
         }
-      } else { // hard
+      } else { // modalità "hard"
         if (currentClef === "treble") {
           const allowed = trebleHardMapping[currentNote];
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
@@ -326,7 +318,7 @@
       }
     }
     
-    // Event listener per i bottoni delle risposte
+    // Aggiunge gli event listener ai bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
     answerButtons.forEach(button => {
       button.addEventListener("click", function() {
@@ -357,7 +349,7 @@
       generateRandomNote();
     });
     
-    // Assicuriamoci che l'immagine di riferimento sia nascosta all'avvio
+    // Nasconde l'immagine di riferimento all'avvio
     referenceContainer.style.display = "none";
     
     // Genera la prima nota al caricamento della pagina
