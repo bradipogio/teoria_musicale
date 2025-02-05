@@ -280,9 +280,11 @@
       // Determina il pitch in base alla difficoltà e alla clef
       if (difficulty === "easy") {
         if (currentClef === "treble") {
-          currentPitch = trebleEasyMapping[currentNote];
+          const allowed = trebleEasyMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
         } else { // bass
-          currentPitch = bassEasyMapping[currentNote];
+          const allowed = bassEasyMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
         }
       } else { // modalità "hard"
         if (currentClef === "treble") {
@@ -349,6 +351,18 @@
       updateStats();
       document.getElementById("result").textContent = "";
       generateRandomNote();
+    });
+    
+    // Aggiungi listener per il cambio di impostazioni (clef e difficoltà)
+    document.getElementById("clefSelect").addEventListener("change", function() {
+      generateRandomNote();
+    });
+    
+    const difficultyRadios = document.getElementsByName("difficulty");
+    difficultyRadios.forEach(radio => {
+      radio.addEventListener("change", function() {
+        generateRandomNote();
+      });
     });
     
     // Nascondi l'immagine di riferimento all'avvio
