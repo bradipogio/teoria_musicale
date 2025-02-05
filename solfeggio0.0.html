@@ -90,7 +90,7 @@
     }
     /* Area in cui VexFlow disegna il pentagramma */
     #notation { width: 100%; height: 100%; }
-    /* Bottoni per le risposte (lettere delle note) */
+    /* Bottoni per le risposte (le lettere delle note) */
     .answer-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -195,8 +195,20 @@
     let currentClef = "treble";
     let currentPitch = ""; // es. "c/4"
     
+    // Mapping per la chiave di basso: associa la nota "interna" a quella che viene visualizzata
+    // Esempio: se la nota interna è "C", in basso si visualizza come "E".
+    const bassTransposition = {
+      "C": "E",
+      "D": "F",
+      "E": "G",
+      "F": "A",
+      "G": "B",
+      "A": "C",
+      "B": "D"
+    };
+    
     // --- Mapping per ogni modalità ---
-    // Violino Facile (range [C4, F5]) – usiamo pitch fissi (scegliamo quelli in ottava 4)
+    // Violino Facile (range [C4, F5]) – usiamo pitch fissi (scelti dall’array)
     const trebleEasyMapping = {
       "C": ["c/4", "c/5"],
       "D": ["d/4", "d/5"],
@@ -219,7 +231,7 @@
     };
     
     // Basso Facile (range [E4, A5])
-    // (Per Bass, usiamo pitch fissi in ottava 4; ciò restituisce valori compresi tra E4 e B4, che rientrano nel range richiesto)
+    // (Per il basso usiamo pitch fissi in ottava 4; i valori ottenuti andranno trasposti per mostrare il nome corretto)
     const bassEasyMapping = {
       "C": ["c/4", "c/5"],
       "D": ["d/4", "d/5"],
@@ -308,17 +320,34 @@
         `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
     }
     
-    // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta
+    // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta.
+    // Per il basso, accettiamo sia la nota "interna" (currentNote) sia la nota trasposta (bassTransposition[currentNote]).
     function checkAnswer(selectedKey) {
-      if (selectedKey === currentNote) {
-        document.getElementById("result").textContent = "Corretto!";
-        correctCount++;
-        updateStats();
-        setTimeout(generateRandomNote, 100);
-      } else {
-        document.getElementById("result").textContent = "Sbagliato, riprova!";
-        wrongCount++;
-        updateStats();
+      if (currentClef === "bass") {
+        const altNote = bassTransposition[currentNote];
+        if (selectedKey === currentNote || selectedKey === altNote) {
+          document.getElementById("result").textContent =
+            `Corretto! (Risposte accettate: ${currentNote} oppure ${altNote})`;
+          correctCount++;
+          updateStats();
+          setTimeout(generateRandomNote, 100);
+        } else {
+          document.getElementById("result").textContent =
+            `Sbagliato! La risposta corretta era ${currentNote} oppure ${altNote}`;
+          wrongCount++;
+          updateStats();
+        }
+      } else { // per la chiave di violino
+        if (selectedKey === currentNote) {
+          document.getElementById("result").textContent = "Corretto!";
+          correctCount++;
+          updateStats();
+          setTimeout(generateRandomNote, 100);
+        } else {
+          document.getElementById("result").textContent = "Sbagliato, riprova!";
+          wrongCount++;
+          updateStats();
+        }
       }
     }
     
@@ -373,3 +402,4 @@
   </script>
 </body>
 </html>
+
