@@ -36,7 +36,7 @@
       font-size: 28px;
       font-weight: 500;
     }
-    /* Controlli: dropdown per la chiave, bottone per il riferimento e per la difficoltà */
+    /* Controlli: dropdown per la chiave, radio per la difficoltà e bottone per il riferimento */
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -63,6 +63,28 @@
     }
     button:hover {
       background: #f0f0f0;
+    }
+    /* Radio group per la difficoltà */
+    .radio-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .radio-group input[type="radio"] {
+      display: none;
+    }
+    .radio-group label {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      background: #007BFF;
+      color: #fff;
+      border-color: #007BFF;
     }
     /* Contenitore dell'immagine di riferimento */
     #referenceContainer {
@@ -130,7 +152,7 @@
       h1 {
         font-size: 1.5rem;
       }
-      .answer-button, select, button {
+      .answer-button, select, button, .radio-group label {
         font-size: 0.9rem;
         padding: 8px 12px;
       }
@@ -141,7 +163,7 @@
   <div class="container">
     <h1>Esercizio di Solfeggio</h1>
     
-    <!-- Controlli: selezione della chiave, difficoltà e bottone per il riferimento -->
+    <!-- Controlli: dropdown per la chiave, radio group per la difficoltà e bottone per il riferimento -->
     <div class="controls">
       <label for="clefSelect">Seleziona chiave:</label>
       <select id="clefSelect">
@@ -149,8 +171,15 @@
         <option value="bass">Basso</option>
         <option value="random">Random</option>
       </select>
-      <!-- Bottone per il cambio di difficoltà -->
-      <button id="toggleDifficulty">Difficile</button>
+      
+      <!-- Radio group per la difficoltà -->
+      <div class="radio-group">
+        <input type="radio" id="easy" name="difficulty" value="easy" checked>
+        <label for="easy">Facile</label>
+        <input type="radio" id="hard" name="difficulty" value="hard">
+        <label for="hard">Difficile</label>
+      </div>
+      
       <button id="toggleReference">Mostra Riferimento</button>
     </div>
     
@@ -191,8 +220,8 @@
     let correctCount = 0;
     let wrongCount = 0;
     
-    // Variabile per la difficoltà: "easy" (facile) oppure "hard" (difficile)
-    let difficulty = "easy"; // modalità iniziale facile
+    // Variabile per la difficoltà: "easy" o "hard"
+    let difficulty = "easy";
     
     // Array delle note (corrispondenti ai nomi dei tasti)
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
@@ -239,6 +268,14 @@
       } else {
         currentClef = clefChoice;
       }
+      
+      // Aggiorna la modalità in base alla selezione radio
+      const radios = document.getElementsByName("difficulty");
+      radios.forEach(radio => {
+        if (radio.checked) {
+          difficulty = radio.value;
+        }
+      });
       
       // Se la modalità è "easy", fissiamo l'ottava; se "hard", usiamo due possibilità
       if (difficulty === "easy") {
@@ -303,21 +340,6 @@
         referenceContainer.style.display = "none";
         toggleReferenceButton.textContent = "Mostra Riferimento";
       }
-    });
-    
-    // Gestione del bottone per il cambio di difficoltà
-    const toggleDifficultyButton = document.getElementById("toggleDifficulty");
-    toggleDifficultyButton.addEventListener("click", function() {
-      // Se la modalità attuale è "easy", passa a "hard", altrimenti torna a "easy"
-      if (difficulty === "easy") {
-        difficulty = "hard";
-        toggleDifficultyButton.textContent = "Facile";
-      } else {
-        difficulty = "easy";
-        toggleDifficultyButton.textContent = "Difficile";
-      }
-      // Genera una nuova nota con la nuova modalità
-      generateRandomNote();
     });
     
     // Gestione del bottone di reset
