@@ -195,6 +195,16 @@
     let currentClef = "treble";
     let currentPitch = ""; // es. "c/4"
     
+    const italianNoteNames = {
+      "C": "Do",
+      "D": "Re",
+      "E": "Mi",
+      "F": "Fa",
+      "G": "Sol",
+      "A": "La",
+      "B": "Si"
+    };
+    
     // Mapping per la chiave di basso: associa la nota "interna" a quella che viene visualizzata
     // Esempio: se la nota interna è "C", in basso si visualizza come "E".
     const bassTransposition = {
@@ -322,18 +332,20 @@
     
     // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta.
     // Per il basso, accettiamo sia la nota "interna" (currentNote) sia la nota trasposta (bassTransposition[currentNote]).
+   
+    
     function checkAnswer(selectedKey) {
       if (currentClef === "bass") {
         const altNote = bassTransposition[currentNote];
-        if (selectedKey === currentNote || selectedKey === altNote) {
+        if (selectedKey === altNote) {
           document.getElementById("result").textContent =
-            `Corretto! (Risposte accettate: ${currentNote} oppure ${altNote})`;
+            `Corretto!`;
           correctCount++;
           updateStats();
           setTimeout(generateRandomNote, 100);
         } else {
           document.getElementById("result").textContent =
-            `Sbagliato! La risposta corretta era ${currentNote} oppure ${altNote}`;
+            `Sbagliato! La risposta corretta era ${italianNoteNames[altNote]}`;
           wrongCount++;
           updateStats();
         }
@@ -344,12 +356,12 @@
           updateStats();
           setTimeout(generateRandomNote, 100);
         } else {
-          document.getElementById("result").textContent = "Sbagliato, riprova!";
+          document.getElementById("result").textContent = `Sbagliato! La risposta corretta era ${italianNoteNames[currentNote]}`;
           wrongCount++;
           updateStats();
         }
       }
-    
+    }
     
     // Event listener per i bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
@@ -402,4 +414,3 @@
   </script>
 </body>
 </html>
-
