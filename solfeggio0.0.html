@@ -323,7 +323,7 @@
     // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta.
     // Per il basso, accettiamo sia la nota "interna" (currentNote) sia la nota trasposta (bassTransposition[currentNote]).
     function checkAnswer(selectedKey) {
-      if (currentClef === "bass") {
+      /*if (currentClef === "bass") {
         const altNote = bassTransposition[currentNote];
         if (selectedKey === currentNote || selectedKey === altNote) {
           document.getElementById("result").textContent =
@@ -337,7 +337,7 @@
           wrongCount++;
           updateStats();
         }
-      } else { // per la chiave di violino
+      } else { // per la chiave di violino*/
         if (selectedKey === currentNote) {
           document.getElementById("result").textContent = "Corretto!";
           correctCount++;
