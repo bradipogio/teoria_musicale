@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Statistiche, Reset e 2 Ottave</title>
+  <title>Esercizio di Solfeggio - Modalità Facile/Difficile, Statistiche e Reset</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
@@ -36,7 +36,7 @@
       font-size: 28px;
       font-weight: 500;
     }
-    /* Controlli: dropdown per la chiave e bottone per il riferimento */
+    /* Controlli: dropdown per la chiave, bottone per il riferimento e per la difficoltà */
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -75,7 +75,7 @@
       border-radius: 4px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    /* Wrapper fisso per il pentagramma: altezza aumentata a 200px */
+    /* Wrapper fisso per il pentagramma */
     #notationWrapper {
       width: 220px;
       height: 200px;
@@ -141,7 +141,7 @@
   <div class="container">
     <h1>Esercizio di Solfeggio</h1>
     
-    <!-- Controlli: selezione della chiave e bottone per il riferimento -->
+    <!-- Controlli: selezione della chiave, difficoltà e bottone per il riferimento -->
     <div class="controls">
       <label for="clefSelect">Seleziona chiave:</label>
       <select id="clefSelect">
@@ -149,6 +149,8 @@
         <option value="bass">Basso</option>
         <option value="random">Random</option>
       </select>
+      <!-- Bottone per il cambio di difficoltà -->
+      <button id="toggleDifficulty">Difficile</button>
       <button id="toggleReference">Mostra Riferimento</button>
     </div>
     
@@ -189,49 +191,48 @@
     let correctCount = 0;
     let wrongCount = 0;
     
+    // Variabile per la difficoltà: "easy" (facile) oppure "hard" (difficile)
+    let difficulty = "easy"; // modalità iniziale facile
+    
     // Array delle note (corrispondenti ai nomi dei tasti)
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
     let currentNote = "";
     let currentClef = "treble";
-    let currentOctave = 4;  // verrà scelto casualmente
+    let currentOctave = 4;  // verrà scelto in base alla modalità e alla chiave
     
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
     // Funzione per disegnare la nota sul pentagramma
     function drawNote(note, clef, octave) {
-      // Svuota solo il contenuto interno, mantenendo le dimensioni del wrapper
       notationDiv.innerHTML = "";
       
-      // Crea il renderer SVG all'interno del div fisso (220x200)
+      // Impostiamo il renderer in base alle dimensioni del wrapper (220x200)
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
       renderer.resize(220, 200);
       const context = renderer.getContext();
       
-      // Crea il pentagramma con la chiave selezionata.
-      // Ho impostato la y a 50 per dare più spazio in verticale
+      // Posizioniamo il pentagramma a y=50 per avere più spazio in verticale
       const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
       
-      // Costruisce la nota, ad es. "c/4" o "c/5" per Do
+      // Costruiamo la nota, ad esempio "c/4" oppure "c/5"
       const key = note.toLowerCase() + "/" + octave;
       const staveNote = new VF.StaveNote({ keys: [key], duration: "q" });
       
-      // Aggiunge la nota a una voce
       const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
       voice.addTickable(staveNote);
       
-      // Formatizza e disegna la nota
       new VF.Formatter().joinVoices([voice]).format([voice], 100);
       voice.draw(context, stave);
     }
     
-    // Genera una nota casuale, scegliendo anche casualmente l'ottava in base alla chiave
+    // Genera una nota casuale e sceglie l'ottava in base alla modalità e alla chiave
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
       
-      // Legge la scelta della chiave dal menu a tendina
+      // Legge la scelta della chiave dal dropdown
       const clefChoice = document.getElementById("clefSelect").value;
       if (clefChoice === "random") {
         currentClef = Math.random() < 0.5 ? "treble" : "bass";
@@ -239,14 +240,21 @@
         currentClef = clefChoice;
       }
       
-      // Seleziona due possibili ottave in base alla chiave:
-      // Per il Violino (treble) usiamo le ottave 4 e 5; per il Basso (bass) le ottave 3 e 4.
-      if (currentClef === "treble") {
-        const octaves = [4, 5];
-        currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
-      } else if (currentClef === "bass") {
-        const octaves = [3, 4];
-        currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
+      // Se la modalità è "easy", fissiamo l'ottava; se "hard", usiamo due possibilità
+      if (difficulty === "easy") {
+        if (currentClef === "treble") {
+          currentOctave = 4;
+        } else if (currentClef === "bass") {
+          currentOctave = 3;
+        }
+      } else { // modalità "hard"
+        if (currentClef === "treble") {
+          const octaves = [4, 5];
+          currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
+        } else if (currentClef === "bass") {
+          const octaves = [3, 4];
+          currentOctave = octaves[Math.floor(Math.random() * octaves.length)];
+        }
       }
       
       drawNote(currentNote, currentClef, currentOctave);
@@ -257,10 +265,11 @@
     function updateStats() {
       const total = correctCount + wrongCount;
       const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-      document.getElementById("scoreInfo").textContent = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
+      document.getElementById("scoreInfo").textContent =
+        `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
     }
     
-    // Controlla se la risposta selezionata è corretta (ignora l'ottava)
+    // Controlla se la risposta è corretta (ignora l'ottava)
     function checkAnswer(selectedKey) {
       if (selectedKey === currentNote) {
         document.getElementById("result").textContent = "Corretto!";
@@ -294,6 +303,21 @@
         referenceContainer.style.display = "none";
         toggleReferenceButton.textContent = "Mostra Riferimento";
       }
+    });
+    
+    // Gestione del bottone per il cambio di difficoltà
+    const toggleDifficultyButton = document.getElementById("toggleDifficulty");
+    toggleDifficultyButton.addEventListener("click", function() {
+      // Se la modalità attuale è "easy", passa a "hard", altrimenti torna a "easy"
+      if (difficulty === "easy") {
+        difficulty = "hard";
+        toggleDifficultyButton.textContent = "Facile";
+      } else {
+        difficulty = "easy";
+        toggleDifficultyButton.textContent = "Difficile";
+      }
+      // Genera una nuova nota con la nuova modalità
+      generateRandomNote();
     });
     
     // Gestione del bottone di reset
