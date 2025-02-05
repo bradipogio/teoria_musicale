@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Esercizio di Solfeggio - Minimal & Responsive</title>
+  <!-- Includiamo VexFlow da CDN -->
+  <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
+  <!-- Google Fonts: Roboto -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <style>
+    /* Reset di base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f7f7f7;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+      font-size: 28px;
+      font-weight: 500;
+    }
+    select, button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin: 10px 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    select:focus, button:focus {
+      outline: none;
+      border-color: #aaa;
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
+    /* Pentagramma */
+    #notation {
+      border: 1px solid #ddd;
+      margin: 20px auto;
+      width: 220px;
+      height: 150px;
+    }
+    /* Bottoni delle risposte in fila */
+    .answer-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+    .answer-button {
+      flex: 0 0 auto;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      background: #007BFF;
+      color: #fff;
+      transition: background 0.3s ease;
+      cursor: pointer;
+      min-width: 50px;
+    }
+    .answer-button:hover {
+      background: #0056b3;
+    }
+    #result,
+    #score {
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    /* Bottone per il riferimento */
+    #toggleReference {
+      background: #28a745;
+      color: #fff;
+    }
+    #toggleReference:hover {
+      background: #218838;
+    }
+    #referenceContainer {
+      margin-top: 20px;
+      display: none;
+    }
+    #referenceContainer img {
+      width: 100%;
+      max-width: 600px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    /* Responsive: adattamento per smartphone */
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 24px;
+      }
+      select, button {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+      #notation {
+        width: 200px;
+        height: 140px;
+      }
+      .answer-button {
+        padding: 8px;
+        font-size: 14px;
+        min-width: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Esercizio di Solfeggio</h1>
+    
+    <!-- Selezione della chiave -->
+    <div>
+      <label for="clefSelect">Seleziona chiave:</label>
+      <select id="clefSelect">
+        <option value="treble">Violino</option>
+        <option value="bass">Basso</option>
+        <option value="random">Random</option>
+      </select>
+    </div>
+    
+    <!-- Bottone per mostrare/chiudere l'immagine di riferimento -->
+    <button id="toggleReference">Mostra Riferimento</button>
+    <div id="referenceContainer">
+      <!-- Inserisci qui l'URL della tua immagine di riferimento -->
+      <img src="https://nicolodemaria.com/wp-content/uploads/2021/01/Schermata-2021-01-19-alle-10.03.13-1500x435.png" alt="Riferimento">
+    </div>
+    
+    <!-- Contenitore per il pentagramma -->
+    <div id="notation"></div>
+    
+    <!-- Bottoni per le risposte in fila -->
+    <div class="answer-buttons">
+      <button class="answer-button" data-key="C">Do</button>
+      <button class="answer-button" data-key="D">Re</button>
+      <button class="answer-button" data-key="E">Mi</button>
+      <button class="answer-button" data-key="F">Fa</button>
+      <button class="answer-button" data-key="G">Sol</button>
+      <button class="answer-button" data-key="A">La</button>
+      <button class="answer-button" data-key="B">Si</button>
+    </div>
+    
+    <!-- Feedback e punteggio -->
+    <p id="result"></p>
+    <p id="score">Punteggio: 0</p>
+  </div>
+  
+  <script>
+    // Array delle note
+    const notes = [
+      { italian: "Do", key: "C" },
+      { italian: "Re", key: "D" },
+      { italian: "Mi", key: "E" },
+      { italian: "Fa", key: "F" },
+      { italian: "Sol", key: "G" },
+      { italian: "La", key: "A" },
+      { italian: "Si", key: "B" }
+    ];
+    
+    // Per semplicità, sia per violino che per basso usiamo la stessa mappatura
+    const noteMapping = {
+      treble: {
+        C: "c/4",
+        D: "d/4",
+        E: "e/4",
+        F: "f/4",
+        G: "g/4",
+        A: "a/4",
+        B: "b/4"
+      },
+      bass: {
+        C: "c/4",
+        D: "d/4",
+        E: "e/4",
+        F: "f/4",
+        G: "g/4",
+        A: "a/4",
+        B: "b/4"
+      }
+    };
+    
+    let currentNote = null;
+    let currentClef = "treble"; // default: Violino
+    let score = 0;
+    
+    const VF = Vex.Flow;
+    const notationDiv = document.getElementById("notation");
+    
+    function clearNotation() {
+      notationDiv.innerHTML = "";
+    }
+    
+    function drawNote(noteKey, clef) {
+      clearNotation();
+      const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
+      renderer.resize(220, 150);
+      const context = renderer.getContext();
+      const stave = new VF.Stave(10, 40, 200);
+      stave.addClef(clef).setContext(context).draw();
+      const keyString = noteMapping[clef][noteKey];
+      const staveNote = new VF.StaveNote({ keys: [keyString], duration: "q" });
+      const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
+      voice.addTickable(staveNote);
+      new VF.Formatter().joinVoices([voice]).format([voice], 100);
+      voice.draw(context, stave);
+    }
+    
+    function generateRandomNote() {
+      const randomIndex = Math.floor(Math.random() * notes.length);
+      currentNote = notes[randomIndex];
+      const clefChoice = document.getElementById("clefSelect").value;
+      if (clefChoice === "random") {
+        currentClef = Math.random() < 0.5 ? "treble" : "bass";
+      } else {
+        currentClef = clefChoice;
+      }
+      drawNote(currentNote.key, currentClef);
+      document.getElementById("result").textContent = "";
+    }
+    
+    function checkAnswer(selectedKey) {
+      if (selectedKey === currentNote.key) {
+        document.getElementById("result").textContent = "Corretto!";
+        score++;
+        document.getElementById("score").textContent = "Punteggio: " + score;
+        setTimeout(generateRandomNote, 1000);
+      } else {
+        document.getElementById("result").textContent = "Sbagliato, riprova!";
+      }
+    }
+    
+    // Gestione dei bottoni delle risposte
+    const answerButtons = document.querySelectorAll(".answer-button");
+    answerButtons.forEach(button => {
+      button.addEventListener("click", function() {
+        const selectedKey = button.getAttribute("data-key");
+        checkAnswer(selectedKey);
+      });
+    });
+    
+    // Gestione del bottone per mostrare/chiudere l'immagine di riferimento
+    const toggleReferenceButton = document.getElementById("toggleReference");
+    const referenceContainer = document.getElementById("referenceContainer");
+    toggleReferenceButton.addEventListener("click", function() {
+      if (referenceContainer.style.display === "none" || referenceContainer.style.display === "") {
+        referenceContainer.style.display = "block";
+        toggleReferenceButton.textContent = "Chiudi Riferimento";
+      } else {
+        referenceContainer.style.display = "none";
+        toggleReferenceButton.textContent = "Mostra Riferimento";
+      }
+    });
+    
+    // Genera la prima nota al caricamento della pagina
+    generateRandomNote();
+  </script>
+</body>
+</html>
