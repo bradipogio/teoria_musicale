@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Esercizio di Solfeggio - Range Personalizzati, Statistiche e Reset</title>
+  <title>Esercizio di Solfeggio – Range Personalizzati, Statistiche e Reset</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
@@ -90,7 +90,7 @@
     }
     /* Area in cui VexFlow disegna il pentagramma */
     #notation { width: 100%; height: 100%; }
-    /* Bottoni per le risposte (note) */
+    /* Bottoni per le risposte (lettere delle note) */
     .answer-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -116,7 +116,7 @@
     /* Sezione statistiche */
     .stats { margin-top: 20px; }
     .stats p { font-size: 1rem; margin: 5px 0; }
-    /* Responsive per schermi piccoli */
+    /* Responsive */
     @media (max-width: 480px) {
       h1 { font-size: 1.5rem; }
       .answer-button, select, button, .radio-group label {
@@ -160,7 +160,7 @@
       <div id="notation"></div>
     </div>
     
-    <!-- Bottoni per le risposte (le lettere delle note) -->
+    <!-- Bottoni per le risposte (le lettere) -->
     <div class="answer-buttons">
       <button class="answer-button" data-key="C">Do</button>
       <button class="answer-button" data-key="D">Re</button>
@@ -195,29 +195,19 @@
     let currentClef = "treble";
     let currentPitch = ""; // es. "c/4"
     
-    // Mapping per Violino FACILE: range [C4, F5]
+    // --- Mapping per ogni modalità ---
+    // Violino Facile (range [C4, F5]) – usiamo pitch fissi (scegliamo quelli in ottava 4)
     const trebleEasyMapping = {
       "C": "c/4",
       "D": "d/4",
       "E": "e/4",
-      "F": "f/5",
+      "F": "f/4",
       "G": "g/4",
       "A": "a/4",
       "B": "b/4"
     };
     
-    // Mapping per Basso FACILE: range [E2, A3]
-    const bassEasyMapping = {
-      "C": "c/3",
-      "D": "d/3",
-      "E": "e/2",
-      "F": "f/2",
-      "G": "g/2",
-      "A": "a/3",
-      "B": "b/2"
-    };
-    
-    // Mapping per Violino DIFFICILE: range [F3, C6]
+    // Violino Difficile (range [F3, C6])
     const trebleHardMapping = {
       "C": ["c/4", "c/5", "c/6"],
       "D": ["d/4", "d/5"],
@@ -228,7 +218,19 @@
       "B": ["b/3", "b/4", "b/5"]
     };
     
-    // Mapping per Basso DIFFICILE: range [A3, E6]
+    // Basso Facile (range [E4, A5])
+    // (Per Bass, usiamo pitch fissi in ottava 4; ciò restituisce valori compresi tra E4 e B4, che rientrano nel range richiesto)
+    const bassEasyMapping = {
+      "C": "c/5",
+      "D": "d/5",
+      "E": "e/4",
+      "F": "f/4",
+      "G": "g/4",
+      "A": "a/4",
+      "B": "b/4"
+    };
+    
+    // Basso Difficile (range [A3, E6])
     const bassHardMapping = {
       "A": ["a/3", "a/4", "a/5"],
       "B": ["b/3", "b/4", "b/5"],
@@ -242,7 +244,7 @@
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
-    // Funzione per disegnare la nota usando il pitch (es. "c/4") e la clef
+    // Funzione per disegnare la nota dato un pitch (es. "c/4") e la clef
     function drawNoteWithPitch(pitch, clef) {
       notationDiv.innerHTML = "";
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
@@ -258,7 +260,7 @@
       voice.draw(context, stave);
     }
     
-    // Funzione per generare una nota casuale e determinare il pitch in base alla modalità e clef
+    // Funzione per generare una nota casuale e determinare il pitch in base a clef e difficoltà
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
@@ -271,7 +273,7 @@
         currentClef = clefChoice;
       }
       
-      // Legge la scelta della difficoltà dal radio group
+      // Legge la difficoltà dal radio group
       const radios = document.getElementsByName("difficulty");
       radios.forEach(radio => { if (radio.checked) difficulty = radio.value; });
       
@@ -318,7 +320,7 @@
       }
     }
     
-    // Aggiunge gli event listener ai bottoni delle risposte
+    // Event listener per i bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
     answerButtons.forEach(button => {
       button.addEventListener("click", function() {
@@ -349,7 +351,7 @@
       generateRandomNote();
     });
     
-    // Nasconde l'immagine di riferimento all'avvio
+    // Nascondi l'immagine di riferimento all'avvio
     referenceContainer.style.display = "none";
     
     // Genera la prima nota al caricamento della pagina
