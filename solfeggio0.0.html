@@ -194,7 +194,8 @@
     let currentNote = "";
     let currentClef = "treble";
     let currentPitch = ""; // es. "c/4"
-    
+    let lastnote ="";
+
     const italianNoteNames = {
       "C": "Do",
       "D": "Re",
@@ -317,9 +318,12 @@
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
         }
       }
-      
+      if (currentNote==lastnote){
+        generateRandomNote();
+      }else{
       drawNoteWithPitch(currentPitch, currentClef);
       document.getElementById("result").textContent = "";
+      lastnote = currentNote;}
     }
     
     // Aggiorna le statistiche
