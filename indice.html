@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagina con Link</title>
+    <style>
+        /* Stile di base */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            text-align: center;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .button {
+            padding: 15px 25px;
+            font-size: 20px;
+            text-decoration: none;
+            color: white;
+            background-color: #007BFF;
+            border-radius: 8px;
+            transition: background 0.3s ease, transform 0.2s;
+            min-width: 200px;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        /* Responsività: i bottoni diventano a colonna su schermi piccoli */
+        @media (max-width: 600px) {
+            .button-container {
+                flex-direction: column;
+            }
+            .button {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Esercizi di solfeggio</h1>
+        <h1>Seleziona un'opzione</h1>
+        <div class="button-container">
+            <a href="#" class="button" id="link1">Note</a>
+            <a href="#" class="button" id="link2">Durata</a>
+        </div>
+    </div>
+
+    <script>
+        // Qui aggiornerò i link quando me li fornisci
+        document.getElementById("link1").href = "https://bradipogio.github.io/teoria_musicale/solfeggio0.0.html"; // Sostituisci con il primo link
+        document.getElementById("link2").href = "https://bradipogio.github.io/teoria_musicale/solfeggio2.0.html"; // Sostituisci con il secondo link
+    </script>
+
+</body>
+</html>
