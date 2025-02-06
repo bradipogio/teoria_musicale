@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Esercizio di Solfeggio – Durata delle Note, Statistiche e Reset</title>
+  <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
+  <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
+  <!-- Google Fonts: Roboto -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <style>
+    /* Reset di base e stili */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f7f7f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 { margin-bottom: 20px; font-size: 28px; font-weight: 500; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    label { font-size: 1rem; }
+    select, button {
+      padding: 10px 15px;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    select:focus, button:focus { outline: none; border-color: #aaa; }
+    button:hover { background: #f0f0f0; }
+    .radio-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      background: #007BFF;
+      color: #fff;
+      border-color: #007BFF;
+    }
+    #referenceContainer {
+      margin-bottom: 20px;
+      display: none;
+    }
+    #referenceContainer img {
+      width: 100%;
+      max-width: 600px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #notationWrapper {
+      width: 220px;
+      height: 200px;
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    #notation { width: 100%; height: 100%; }
+    .answer-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .answer-button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #007BFF;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      flex: 1 1 auto;
+      margin: 5px;
+    }
+    .answer-button:hover { background: #0056b3; }
+    #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
+    .stats { margin-top: 20px; }
+    .stats p { font-size: 1rem; margin: 5px 0; }
+    @media (max-width: 480px) {
+      h1 { font-size: 1.5rem; }
+      .answer-button, select, button, .radio-group label {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Esercizio di Solfeggio – Durata delle Note</h1>
+    
+    <!-- Controlli -->
+    <div class="controls">
+
+      
+      <!-- Radio group per la difficoltà -->
+      <div class="radio-group">
+        <input type="radio" id="easy" name="difficulty" value="easy" checked>
+        <label for="easy">Facile</label>
+        <input type="radio" id="hard" name="difficulty" value="hard">
+        <label for="hard">Difficile</label>
+      </div>
+      
+      <button id="toggleReference">Mostra Riferimento</button>
+    </div>
+    
+    <!-- Immagine di riferimento -->
+    <div id="referenceContainer">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/valori-musicali.png?raw=true" alt="Riferimento">
+    </div>
+    
+    <!-- Pentagramma -->
+    <div id="notationWrapper">
+      <div id="notation"></div>
+    </div>
+    
+    <!-- Bottoni per le risposte (durata delle note) -->
+    <div class="answer-buttons">
+      <button class="answer-button" data-duration="w">Semibreve</button>
+      <button class="answer-button" data-duration="h">Minima</button>
+      <button class="answer-button" data-duration="q">Semiminima</button>
+      <button class="answer-button" data-duration="8">Croma</button>
+      <button class="answer-button" data-duration="16">Semicroma</button>
+      <button class="answer-button" data-duration="32">Biscroma</button>
+      <button class="answer-button" data-duration="64">Semibiscroma</button>
+    </div>
+
+    <!-- Statistiche e Reset -->
+    <div class="stats">
+      <p id="scoreInfo">Corrette: 0, Sbagliate: 0, Percentuale: 0%</p>
+      <button id="resetButton">Reset</button>
+    </div>
+        
+    <!-- Feedback -->
+    <p id="result"></p>
+  </div>
+  
+  <script>
+    // Variabili statistiche
+    let correctCount = 0;
+    let wrongCount = 0;
+    
+    // Variabile per la difficoltà ("easy" o "hard")
+    let difficulty = "easy";
+    
+    // Variabile per la durata corrente (risposta corretta) e per la chiave attuale
+    let currentDuration = "";
+    let lastduration = "";
+    let currentClef = "treble";
+    
+    // Mapping dei nomi delle durate in italiano
+    const durationNames = {
+      "w": "Semibreve",
+      "h": "Minima",
+      "q": "Semiminima",
+      "8": "Croma",
+      "16": "Semicroma",
+      "32": "Biscroma",
+      "64": "Semibiscroma"
+    };
+    
+    const VF = Vex.Flow;
+    const notationDiv = document.getElementById("notation");
+    
+    // Funzione per disegnare una nota con una determinata durata e chiave.
+    // Il pitch viene fissato in modo che la nota appaia centralmente:
+    // per il violino viene usato "b/4", per il basso "d/3".
+    function drawNoteWithDuration(duration, clef) {
+      notationDiv.innerHTML = "";
+      const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
+      renderer.resize(220, 200);
+      const context = renderer.getContext();
+      const stave = new VF.Stave(10, 50, 200);
+      stave.addClef(clef).setContext(context).draw();
+      
+      let key = (clef === "bass") ? "d/3" : "b/4";
+      const staveNote = new VF.StaveNote({ keys: [key], duration: duration });
+      
+      // Creiamo una voce in 4/4, ma disabilitiamo il controllo rigoroso (strict)
+      // per evitare errori dovuti alla battuta incompleta.
+      const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+      voice.setStrict(false);
+      voice.addTickable(staveNote);
+      new VF.Formatter().joinVoices([voice]).format([voice], 100);
+      voice.draw(context, stave);
+    }
+    
+    // Funzione per generare una nota casuale (la cui durata è scelta in base alla difficoltà)
+    function generateRandomDurationNote() {
+      // Seleziona la chiave in base al dropdown
+
+      // Legge la difficoltà selezionata
+      const radios = document.getElementsByName("difficulty");
+      radios.forEach(radio => { if (radio.checked) { difficulty = radio.value; } });
+      
+      // In base alla difficoltà, definiamo l’array delle durate ammesse
+      let allowedDurations;
+      if (difficulty === "easy") {
+        allowedDurations = ["w", "h", "q"]; // Semibreve, Minima, Semiminima
+      } else {
+        allowedDurations = ["w", "h", "q", "8", "16", "32", "64"];
+      }
+      
+      // Seleziona in modo casuale una durata
+      const randomIndex = Math.floor(Math.random() * allowedDurations.length);
+      currentDuration = allowedDurations[randomIndex];
+      if (currentDuration == lastduration){
+    generateRandomDurationNote() }else{
+      }
+      drawNoteWithDuration(currentDuration, currentClef);
+      document.getElementById("result").textContent = "";
+      lastduration = currentDuration;
+    }
+    
+    // Aggiorna le statistiche
+    function updateStats() {
+      const total = correctCount + wrongCount;
+      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+      document.getElementById("scoreInfo").textContent =
+        `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
+    }
+    
+    // Verifica se la risposta selezionata (in base al valore della durata) è corretta
+    function checkDurationAnswer(selectedDuration) {
+      if (selectedDuration === currentDuration) {
+        document.getElementById("result").textContent = "Corretto!";
+        correctCount++;
+        updateStats();
+        setTimeout(generateRandomDurationNote, 100);
+      } else {
+        document.getElementById("result").textContent =
+          `Sbagliato! La risposta corretta era ${durationNames[currentDuration]}`;
+        wrongCount++;
+        updateStats();
+      }
+    }
+    
+    // Aggiungiamo il listener ai bottoni delle risposte
+    const answerButtons = document.querySelectorAll(".answer-button");
+    answerButtons.forEach(button => {
+      button.addEventListener("click", function() {
+        const selectedDuration = button.getAttribute("data-duration");
+        checkDurationAnswer(selectedDuration);
+      });
+    });
+    
+    // Gestione del bottone per mostrare/nascondere l'immagine di riferimento
+    const toggleReferenceButton = document.getElementById("toggleReference");
+    const referenceContainer = document.getElementById("referenceContainer");
+    toggleReferenceButton.addEventListener("click", function() {
+      if (referenceContainer.style.display === "none" || referenceContainer.style.display === "") {
+        referenceContainer.style.display = "block";
+        toggleReferenceButton.textContent = "Chiudi Riferimento";
+      } else {
+        referenceContainer.style.display = "none";
+        toggleReferenceButton.textContent = "Mostra Riferimento";
+      }
+    });
+    
+    // Bottone di reset
+    document.getElementById("resetButton").addEventListener("click", function() {
+      correctCount = 0;
+      wrongCount = 0;
+      updateStats();
+      document.getElementById("result").textContent = "";
+      generateRandomDurationNote();
+    });
+    
+
+    const difficultyRadios = document.getElementsByName("difficulty");
+    difficultyRadios.forEach(radio => {
+      radio.addEventListener("change", function() {
+        generateRandomDurationNote();
+      });
+    });
+    
+    // Nascondi l'immagine di riferimento all'avvio
+    referenceContainer.style.display = "none";
+    
+    // Genera la prima nota al caricamento della pagina
+    generateRandomDurationNote();
+  </script>
+</body>
+</html>
