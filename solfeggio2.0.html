@@ -103,6 +103,7 @@
       transition: background 0.3s ease;
       flex: 1 1 auto;
       margin: 5px;
+      text-align: center;
     }
     .answer-button:hover { background: #0056b3; }
     #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
@@ -115,6 +116,20 @@
         padding: 8px 12px;
       }
     }
+    /* Stile del pulsante Home */
+    .back-button {
+      display: inline-block;
+      padding: 8px 12px;
+      font-size: 18px;
+      color: white;
+      background-color: #007BFF;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background 0.3s ease;
+    }
+    .back-button:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -123,8 +138,8 @@
     
     <!-- Controlli -->
     <div class="controls">
-
-      
+      <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="back-button">Home</a> 
+      <br> <br>
       <!-- Radio group per la difficoltà -->
       <div class="radio-group">
         <input type="radio" id="easy" name="difficulty" value="easy" checked>
@@ -175,11 +190,12 @@
     // Variabile per la difficoltà ("easy" o "hard")
     let difficulty = "easy";
     
-    // Variabile per la durata corrente (risposta corretta) e per la chiave attuale
+    // Variabili che indicano la durata attuale, e se l'elemento corrente è una pausa (isRest = true) o una nota (isRest = false)
     let currentDuration = "";
-    let lastduration = "";
-    let currentClef = "treble";
-    
+    let lastDuration = "";
+    let isRest = false;
+    const currentClef = "treble"; // Chiave fissa per il disegno
+
     // Mapping dei nomi delle durate in italiano
     const durationNames = {
       "w": "Semibreve",
@@ -194,10 +210,9 @@
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
     
-    // Funzione per disegnare una nota con una determinata durata e chiave.
-    // Il pitch viene fissato in modo che la nota appaia centralmente:
-    // per il violino viene usato "b/4", per il basso "d/3".
-    function drawNoteWithDuration(duration, clef) {
+    // Funzione per disegnare una nota o una pausa
+    function drawNoteWithDuration(duration, clef, isRest) {
+      // Svuota il contenitore
       notationDiv.innerHTML = "";
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
       renderer.resize(220, 200);
@@ -205,11 +220,18 @@
       const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
       
-      let key = (clef === "bass") ? "d/3" : "b/4";
-      const staveNote = new VF.StaveNote({ keys: [key], duration: duration });
+      // Se è pausa, aggiungiamo "r" alla durata (es. "wr", "qr", ecc.)
+      let finalDuration = isRest ? (duration + "r") : duration;
       
-      // Creiamo una voce in 4/4, ma disabilitiamo il controllo rigoroso (strict)
-      // per evitare errori dovuti alla battuta incompleta.
+      // Utilizziamo una chiave fissa (ad es. "b/4")
+      const key = "b/4";
+      
+      const staveNote = new VF.StaveNote({
+        keys: [key],
+        duration: finalDuration
+      });
+      
+      // Creiamo una voce in 4/4, disabilitando il controllo rigoroso per evitare errori su battute incomplete
       const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
       voice.setStrict(false);
       voice.addTickable(staveNote);
@@ -217,13 +239,13 @@
       voice.draw(context, stave);
     }
     
-    // Funzione per generare una nota casuale (la cui durata è scelta in base alla difficoltà)
+    // Funzione per generare una nota (o pausa) casuale
     function generateRandomDurationNote() {
-      // Seleziona la chiave in base al dropdown
-
       // Legge la difficoltà selezionata
       const radios = document.getElementsByName("difficulty");
-      radios.forEach(radio => { if (radio.checked) { difficulty = radio.value; } });
+      radios.forEach(radio => { 
+        if (radio.checked) { difficulty = radio.value; }
+      });
       
       // In base alla difficoltà, definiamo l’array delle durate ammesse
       let allowedDurations;
@@ -233,52 +255,58 @@
         allowedDurations = ["w", "h", "q", "8", "16", "32", "64"];
       }
       
-      // Seleziona in modo casuale una durata
+      // Possibilità (ad es. 20%) che venga generato un elemento come pausa invece che nota
+      isRest = (Math.random() < 0.2);
+      
+      // Seleziona una durata casuale
       const randomIndex = Math.floor(Math.random() * allowedDurations.length);
       currentDuration = allowedDurations[randomIndex];
-      if (currentDuration == lastduration){
-    generateRandomDurationNote() }else{
+      
+      // (Opzionale) Evita di generare due volte consecutivamente la stessa durata (solo per le note)
+      if (!isRest && currentDuration === lastDuration) {
+        generateRandomDurationNote();
+        return;
       }
-      drawNoteWithDuration(currentDuration, currentClef);
+      
+      // Disegna la nota o pausa sul pentagramma
+      drawNoteWithDuration(currentDuration, currentClef, isRest);
+      
       document.getElementById("result").textContent = "";
-      lastduration = currentDuration;
+      lastDuration = currentDuration;
     }
     
     // Aggiorna le statistiche
     function updateStats() {
-    const total = correctCount + wrongCount;
-    const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-    const scoreInfo = document.getElementById("scoreInfo");
+      const total = correctCount + wrongCount;
+      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+      const scoreInfo = document.getElementById("scoreInfo");
 
-    scoreInfo.innerHTML = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, <br>
+      scoreInfo.innerHTML = `Corrette: ${correctCount}, Sbagliate: ${wrongCount} <br>
         Percentuale: <span id="percentageValue">${percentage}%</span>`;
 
-    const percentageValue = document.getElementById("percentageValue");
-
-    // Cambia il colore della percentuale
-    if (percentage >= 50) {
-        percentageValue.style.color = "darkgreen"; // Verde scuro
-    } else {
-        percentageValue.style.color = "darkred"; // Rosso scuro
+      const percentageValue = document.getElementById("percentageValue");
+      // Cambia il colore della percentuale: verde scuro se ≥ 50%, rosso scuro altrimenti
+      percentageValue.style.color = (percentage >= 50) ? "darkgreen" : "darkred";
     }
-}
     
-    // Verifica se la risposta selezionata (in base al valore della durata) è corretta
+    // Verifica se la risposta selezionata (basata sulla durata) è corretta
     function checkDurationAnswer(selectedDuration) {
       if (selectedDuration === currentDuration) {
         document.getElementById("result").textContent = "Corretto!";
         correctCount++;
         updateStats();
-        setTimeout(generateRandomDurationNote, 100);
-      } else {
-        document.getElementById("result").textContent =
-          `Sbagliato! La risposta corretta era ${durationNames[currentDuration]}`;
-        wrongCount++;
-        updateStats();
-      }
+        setTimeout(generateRandomDurationNote, 300);
+        return;
+      } 
+      
+      let correctAnswer = durationNames[currentDuration];
+      document.getElementById("result").textContent =
+        `Sbagliato! La risposta corretta era ${correctAnswer}`;
+      wrongCount++;
+      updateStats();
     }
     
-    // Aggiungiamo il listener ai bottoni delle risposte
+    // Aggiunge il listener ai bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
     answerButtons.forEach(button => {
       button.addEventListener("click", function() {
@@ -309,7 +337,7 @@
       generateRandomDurationNote();
     });
     
-
+    // Gestione del cambio di difficoltà
     const difficultyRadios = document.getElementsByName("difficulty");
     difficultyRadios.forEach(radio => {
       radio.addEventListener("change", function() {
@@ -317,10 +345,10 @@
       });
     });
     
-    // Nascondi l'immagine di riferimento all'avvio
+    // Nasconde l'immagine di riferimento all'avvio
     referenceContainer.style.display = "none";
     
-    // Genera la prima nota al caricamento della pagina
+    // Genera il primo elemento (nota o pausa) al caricamento della pagina
     generateRandomDurationNote();
   </script>
 </body>
