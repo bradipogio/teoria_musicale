@@ -115,7 +115,7 @@
     #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
     /* Sezione statistiche */
     .stats { margin-top: 20px; }
-    .stats p { font-size: 1rem; margin: 5px 0; }
+    .stats p { font-size: 1.5rem; margin: 5px 0; }
     /* Responsive */
     @media (max-width: 480px) {
       h1 { font-size: 1.5rem; }
@@ -173,7 +173,7 @@
 
     <!-- Statistiche e Reset -->
     <div class="stats">
-      <p id="scoreInfo">Corrette: 0, Sbagliate: 0, Percentuale: 0%</p>
+      <p id="scoreInfo">Corrette: 0, Sbagliate: 0, <br>Percentuale: 100%</p>
       <button id="resetButton">Reset</button>
     </div>
         
@@ -327,12 +327,26 @@
     }
     
     // Aggiorna le statistiche
-    function updateStats() {
-      const total = correctCount + wrongCount;
-      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-      document.getElementById("scoreInfo").textContent =
-        `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, Percentuale: ${percentage}%`;
+
+
+        function updateStats() {
+    const total = correctCount + wrongCount;
+    const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    const scoreInfo = document.getElementById("scoreInfo");
+
+    scoreInfo.innerHTML = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, <br>
+        Percentuale: <span id="percentageValue">${percentage}%</span>`;
+
+    const percentageValue = document.getElementById("percentageValue");
+
+    // Cambia il colore della percentuale
+    if (percentage >= 50) {
+        percentageValue.style.color = "darkgreen"; // Verde scuro
+    } else {
+        percentageValue.style.color = "darkred"; // Rosso scuro
     }
+}
+    
     
     // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta.
     // Per il basso, accettiamo sia la nota "interna" (currentNote) sia la nota trasposta (bassTransposition[currentNote]).
