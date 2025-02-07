@@ -206,7 +206,7 @@
     <!-- Feedback -->
     <p id="result"></p>
   </div>
-  <footer>Visite: <span id="counter">Caricamento...</span></footer>
+  <footer><a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fbradipogio.github.io%2Fteoria_musicale%2Fsolfeggio0.0.html&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a></span></footer>
 
   
   <script>
@@ -457,17 +457,6 @@
     
     // Genera la prima nota al caricamento della pagina
     generateRandomNote();
-
-        // Sostituisci 'iltuosito.com' con un identificativo univoco per il tuo sito (es. il dominio)
-        fetch('https://api.countapi.xyz/hit/bradipogio.github.io/teoria_musicale/solfeggio0.0.html/visits')
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById('counter').textContent = data.value;
-      })
-      .catch(error => {
-        console.error('Errore nel recupero del contatore:', error);
-        document.getElementById('counter').textContent = 'Errore';
-      });
   </script>
 </body>
 </html>
