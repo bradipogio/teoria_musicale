@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <!-- Importa Tone.js da un CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js" defer></script>
+  <!-- Meta viewport per dispositivi mobili -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generatore di Accordi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    /* Pannello per il pulsante di suono */
+    #sound-toggle {
+      margin-bottom: 10px;
+    }
+    .sound-button {
+      padding: 8px 12px;
+      font-size: 18px;
+      margin: 0 5px;
+      cursor: pointer;
+    }
+    /* Pannello per scegliere tra diesis e bemolle */
+    #accidental-choice {
+      margin-bottom: 10px;
+    }
+    .accidental-button {
+      padding: 8px 16px;
+      font-size: 16px;
+      margin: 0 0px;
+      cursor: pointer;
+    }
+    .accidental-button.active {
+      background: #add8e6;
+    }
+    /* Tastiera: larghezza 90% (max 700px) centrata */
+    #keyboard {
+      position: relative;
+      width: 90%;
+      max-width: 700px;
+      margin: 20px auto;
+      user-select: none;
+    }
+    .white-key, .black-key {
+      position: absolute;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .white-key {
+      background: #fff;
+      border: 1px solid #000;
+    }
+    .white-key.active {
+      background: #ffd700;
+    }
+    .black-key {
+      background: #000;
+      border: 1px solid #000;
+      z-index: 2;
+      border-radius: 0 0 5px 5px;
+    }
+    .black-key.active {
+      background: #ffa500;
+    }
+    .key-label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: #000;
+      pointer-events: none;
+    }
+    /* Bottoni per la scelta degli accordi */
+    .chord-button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .chord-button.active {
+      background: #add8e6;
+    }
+    /* Blocchi informativi (accordo, gradi, semitoni) */
+    #chord-info {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .info-line {
+      margin: 5px auto;
+      padding: 5px;
+      max-width: 700px;
+    }
+    .chord-name {
+      background-color: #e0f7fa; /* azzurro chiaro */
+    }
+    .degrees {
+      background-color: #ffe0b2; /* arancione chiaro */
+    }
+    .semitones {
+      background-color: #e1bee7; /* lilla chiaro */
+    }
+    .grid-container {
+      display: grid;
+      grid-auto-flow: column;
+      column-gap: 20px;
+      justify-content: center;
+    }
+    header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px; /* Spazio tra il pulsante e il titolo */
+  margin-bottom: 20px;
+}
+
+.home-button {
+  background-color: #add8e6;
+  padding: 8px 12px;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #000;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.home-button:hover {
+  background-color: #87cefa;
+}
+@media only screen and (max-width: 600px) {
+  #keyboard {
+    width: 100%;
+    overflow-x: auto; /* Abilita lo scrolling orizzontale */
+  }
+  .white-key, .black-key {
+    /* Riduci leggermente le dimensioni dei tasti */
+    width: calc(100px / 7); /* ad esempio, fissa una larghezza minima */
+    height: calc((100px / 7) * 5);
+  }
+  .key-label {
+    font-size: 10px; /* Riduci anche il font delle etichette */
+  }
+}
+
+  </style>
+</head>
+<body>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Generatore di Accordi</h1>
+  </header>
+    <p>Clicca su una nota della tastiera per selezionare la <strong>nota fondamentale</strong>, poi scegli il tipo di accordo.</p>
+  
+  <!-- Contenitore dei controlli: pulsante suono e scelta accidentale -->
+  <div class="grid-container">
+    <div id="sound-toggle"></div>
+    <div id="accidental-choice"></div>
+  </div>
+  
+  <!-- Contenitore della tastiera -->
+  <div id="keyboard"></div>
+  
+  <!-- Bottoni per la scelta dell’accordo -->
+  <div id="chord-buttons">
+    <button class="chord-button" data-chord="">Maggiore</button>
+    <button class="chord-button" data-chord="m">Minore</button>
+    <button class="chord-button" data-chord="7">7 (dominante)</button>
+    <button class="chord-button" data-chord="maj7">Maggiore 7</button>
+    <button class="chord-button" data-chord="m7">Minore 7</button>
+    <button class="chord-button" data-chord="m(maj7)">Minore con 7 Mag.</button>
+    <button class="chord-button" data-chord="aug">Aumentato</button>
+    <button class="chord-button" data-chord="dim">Diminuito</button>
+    <button class="chord-button" data-chord="sus2">Sus2</button>
+    <button class="chord-button" data-chord="sus4">Sus4</button>
+  </div>
+  
+  <!-- Area per le informazioni dell'accordo -->
+  <div id="chord-info"></div>
+  
+  <script defer>
+    document.addEventListener("DOMContentLoaded", function() {
+
+      /***********************
+       * Impostazioni globali
+       ***********************/
+      // Di default: suono spento, notazione flat, accordo "maggiore" e root "C4"
+      let preferSharps = true; // Puoi cambiarlo a false per flat, ma qui lascio default come sharp
+      let soundOn = false;     // Disattivo il suono di default
+      let currentChordType = ""; // Default: maggiore
+      let selectedRoot = "C4";   // Default: Do (C) nella 4° ottava
+      let keyElements = {};      // Mappa: nome del tasto (es. "C4") → elemento DOM
+
+      /***********************
+       * Mappe e formule degli accordi
+       ***********************/
+      const chordFormulas = {
+        "":        [ {degree: 0, semitones: 0}, {degree: 2, semitones: 4}, {degree: 4, semitones: 7} ],
+        "m":       [ {degree: 0, semitones: 0}, {degree: 2, semitones: 3}, {degree: 4, semitones: 7} ],
+        "7":       [ {degree: 0, semitones: 0}, {degree: 2, semitones: 4}, {degree: 4, semitones: 7}, {degree: 6, semitones: 10} ],
+        "maj7":    [ {degree: 0, semitones: 0}, {degree: 2, semitones: 4}, {degree: 4, semitones: 7}, {degree: 6, semitones: 11} ],
+        "m7":      [ {degree: 0, semitones: 0}, {degree: 2, semitones: 3}, {degree: 4, semitones: 7}, {degree: 6, semitones: 10} ],
+        "m(maj7)": [ {degree: 0, semitones: 0}, {degree: 2, semitones: 3}, {degree: 4, semitones: 7}, {degree: 6, semitones: 11} ],
+        "aug":     [ {degree: 0, semitones: 0}, {degree: 2, semitones: 4}, {degree: 4, semitones: 8} ],
+        "dim":     [ {degree: 0, semitones: 0}, {degree: 2, semitones: 3}, {degree: 4, semitones: 6} ],
+        "sus2":    [ {degree: 0, semitones: 0}, {degree: 2, semitones: 2}, {degree: 4, semitones: 7} ],
+        "sus4":    [ {degree: 0, semitones: 0}, {degree: 2, semitones: 5}, {degree: 4, semitones: 7} ]
+      };
+
+      const chordNamesItalian = {
+        "": "maggiore",
+        "m": "minore",
+        "7": "7 (dominante)",
+        "maj7": "maggiore 7",
+        "m7": "minore 7",
+        "m(maj7)": "minore con 7 mag.",
+        "aug": "aumentato",
+        "dim": "diminuito",
+        "sus2": "sus2",
+        "sus4": "sus4"
+      };
+
+      const degreeNames = {
+        "": ["prima", "terza maggiore", "quinta giusta"],
+        "m": ["prima", "terza minore", "quinta giusta"],
+        "7": ["prima", "terza maggiore", "quinta giusta", "settima minore"],
+        "maj7": ["prima", "terza maggiore", "quinta giusta", "settima maggiore"],
+        "m7": ["prima", "terza minore", "quinta giusta", "settima minore"],
+        "m(maj7)": ["prima", "terza minore", "quinta giusta", "settima maggiore"],
+        "aug": ["prima", "terza maggiore", "quinta aumentata"],
+        "dim": ["prima", "terza minore", "quinta diminuita"],
+        "sus2": ["prima", "seconda", "quinta giusta"],
+        "sus4": ["prima", "quarta", "quinta giusta"]
+      };
+
+      /***********************
+       * Funzione helper per formattare una nota
+       * Se withOctave è true, mantiene il numero d'ottava; altrimenti lo esclude.
+       ***********************/
+      function formatNote(note, useSharps, withOctave) {
+        let m = note.match(/^([A-G](?:#|b)*)(\d+)?$/);
+        if(m) {
+          let notePart = m[1];
+          let octave = m[2] || "";
+          if(useSharps) {
+            return convertToItalianNoteName(notePart) + (withOctave ? octave : "");
+          } else {
+            return italianFlatNames[getPitch(notePart)] + (withOctave ? octave : "");
+          }
+        }
+        return note;
+      }
+
+      /***********************
+       * Funzioni per il calcolo dell'alterazione e del pitch (0-11)
+       ***********************/
+      function accidentalValue(acc) {
+        let value = 0;
+        for (let ch of acc) {
+          if(ch === "#") value++;
+          else if(ch === "b") value--;
+        }
+        return value;
+      }
+      function getPitch(note) {
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let letter = note[0];
+        let acc = note.slice(1);
+        let base = naturalPitches[letter];
+        return ((base + accidentalValue(acc)) % 12 + 12) % 12;
+      }
+      
+      // Array per la notazione flat (semplice)
+      const italianSharpNames = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+      const italianFlatNames  = ["Do","Reb","Re","Mib","Mi","Fa","Solb","Sol","Lab","La","Sib","Si"];
+      
+      /***********************
+       * Per la visualizzazione classica (sharp mode) preserviamo gli accidentali
+       ***********************/
+      function convertToItalianNoteName(noteStr) {
+        const mapping = {
+          "A": "La",
+          "B": "Si",
+          "C": "Do",
+          "D": "Re",
+          "E": "Mi",
+          "F": "Fa",
+          "G": "Sol"
+        };
+        let letter = noteStr[0];
+        let accidental = noteStr.slice(1);
+        return mapping[letter] + accidental;
+      }
+      function convertToItalianNoteNameWithOctave(noteStr) {
+        let m = noteStr.match(/^([A-G](?:#|b)*)(\d+)$/);
+        if(m) {
+          return convertToItalianNoteName(m[1]) + m[2];
+        }
+        return noteStr;
+      }
+      
+      /***********************
+       * Assegna gli ottavi alle note dell'accordo in ordine ascendente
+       ***********************/
+      function assignChordOctaves(chordNotes, baseOctave, rootNote) {
+        let assigned = [];
+        let rootPitch = getPitch(rootNote);
+        let prevAbs = baseOctave * 12 + rootPitch;
+        assigned.push(rootNote + baseOctave);
+        for (let i = 1; i < chordNotes.length; i++) {
+          let note = chordNotes[i];
+          let octave = baseOctave;
+          while ((octave * 12 + getPitch(note)) <= prevAbs) {
+            octave++;
+          }
+          let abs = octave * 12 + getPitch(note);
+          assigned.push(note + octave);
+          prevAbs = abs;
+        }
+        return assigned;
+      }
+      
+      /***********************
+       * Funzione di "spelling" classico
+       * Calcola la nota target (senza ottava) a partire dalla radice, dal grado e dai semitoni da aggiungere.
+       ***********************/
+      function spellNote(root, degree, semitoneOffset) {
+        let letters = ["A","B","C","D","E","F","G"];
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let rootLetter = root[0];
+        let rootAcc = root.slice(1);
+        let rootPitch = naturalPitches[rootLetter] + accidentalValue(rootAcc);
+        let targetPitch = (rootPitch + semitoneOffset) % 12;
+        if(targetPitch < 0) targetPitch += 12;
+        let rootIndex = letters.indexOf(rootLetter);
+        let expectedLetter = letters[(rootIndex + degree) % 7];
+        let expectedNatural = naturalPitches[expectedLetter];
+        let diff = targetPitch - expectedNatural;
+        if(diff > 6) diff -= 12;
+        if(diff < -6) diff += 12;
+        let accStr = "";
+        if(diff > 0) {
+          for (let i = 0; i < diff; i++) accStr += "#";
+        } else if(diff < 0) {
+          for (let i = 0; i < -diff; i++) accStr += "b";
+        }
+        return expectedLetter + accStr;
+      }
+      
+      /***********************
+       * Converte una nota classica (senza ottava) nella notazione dei tasti (semplice)
+       ***********************/
+      function classicalToKeyboard(note) {
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let letter = note[0];
+        let acc = note.slice(1);
+        let pitch = naturalPitches[letter] + accidentalValue(acc);
+        pitch = ((pitch % 12) + 12) % 12;
+        const keyboardNames = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        return keyboardNames[pitch];
+      }
+      
+      /***********************
+       * Inizializza il campionatore per il suono del pianoforte (Tone.js)
+       ***********************/
+      const piano = new Tone.Sampler({
+        urls: {
+          "C4": "C4.mp3",
+          "D#4": "Ds4.mp3",
+          "F#4": "Fs4.mp3",
+          "A4": "A4.mp3"
+        },
+        release: 1,
+        baseUrl: "https://tonejs.github.io/audio/salamander/"
+      }).toDestination();
+      
+      /***********************
+       * Setup del pulsante per il suono (on/off)
+       ***********************/
+      function setupSoundToggle() {
+        const container = document.getElementById("sound-toggle");
+        container.innerHTML = `<button id="sound-button" class="sound-button">🔇</button>`;
+        document.getElementById("sound-button").addEventListener("click", () => {
+          soundOn = !soundOn;
+          document.getElementById("sound-button").textContent = soundOn ? "🔊" : "🔇";
+        });
+      }
+      
+      /***********************
+       * Setup del pannello per la scelta degli accidentali
+       ***********************/
+      function setupAccidentalChoice() {
+        const container = document.getElementById("accidental-choice");
+        container.innerHTML = `
+          <button id="sharp-button" class="accidental-button active">#</button>
+          <button id="flat-button" class="accidental-button">b</button>
+        `;
+        document.getElementById("sharp-button").addEventListener("click", () => {
+          preferSharps = true;
+          document.getElementById("sharp-button").classList.add("active");
+          document.getElementById("flat-button").classList.remove("active");
+          updateKeyboardLabels();
+          if(selectedRoot) generateChord();
+        });
+        document.getElementById("flat-button").addEventListener("click", () => {
+          preferSharps = false;
+          document.getElementById("flat-button").classList.add("active");
+          document.getElementById("sharp-button").classList.remove("active");
+          updateKeyboardLabels();
+          if(selectedRoot) generateChord();
+        });
+      }
+      
+      /***********************
+       * Aggiorna le etichette dei tasti (solo quelli con .key-label)
+       ***********************/
+      function updateKeyboardLabels() {
+        Object.values(keyElements).forEach(key => {
+          let baseNote = key.dataset.note.replace(/\d+/, "");
+          let newLabel = formatNote(baseNote, preferSharps, false);
+          let labelEl = key.querySelector('.key-label');
+          if(labelEl) {
+            labelEl.textContent = newLabel;
+          }
+        });
+      }
+      
+      /***********************
+       * Imposta la tastiera (due ottave)
+       ***********************/
+      const keyboard = document.getElementById('keyboard');
+      const totalWhiteKeys = 2 * 7;
+      const containerWidth = keyboard.clientWidth;
+      const whiteKeyWidth = containerWidth / totalWhiteKeys;
+      const whiteKeyHeight = whiteKeyWidth * 5;
+      const blackKeyWidth = whiteKeyWidth * 0.6;
+      const blackKeyHeight = whiteKeyHeight * 0.6;
+      keyboard.style.height = whiteKeyHeight + "px";
+      
+      const octaveNotes = [
+        { note: 'C', type: 'white' },
+        { note: 'C#', type: 'black' },
+        { note: 'D', type: 'white' },
+        { note: 'D#', type: 'black' },
+        { note: 'E', type: 'white' },
+        { note: 'F', type: 'white' },
+        { note: 'F#', type: 'black' },
+        { note: 'G', type: 'white' },
+        { note: 'G#', type: 'black' },
+        { note: 'A', type: 'white' },
+        { note: 'A#', type: 'black' },
+        { note: 'B', type: 'white' }
+      ];
+      
+      let whiteKeyCount = 0;
+      const startOctave = 4;
+      const numOctaves = 2;
+      for (let o = 0; o < numOctaves; o++) {
+        let octave = startOctave + o;
+        for (let i = 0; i < octaveNotes.length; i++) {
+          let noteObj = octaveNotes[i];
+          let fullNote = noteObj.note + octave;
+          if (noteObj.type === 'white') {
+            let key = document.createElement('div');
+            key.classList.add('white-key');
+            key.dataset.note = fullNote;
+            key.style.width = whiteKeyWidth + "px";
+            key.style.height = whiteKeyHeight + "px";
+            key.style.left = (whiteKeyCount * whiteKeyWidth) + "px";
+            let label = document.createElement('div');
+            label.classList.add('key-label');
+            label.textContent = formatNote(fullNote.replace(/\d+/,""), preferSharps, false);
+            key.appendChild(label);
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+            whiteKeyCount++;
+            key.addEventListener('click', () => {
+              clearSelection();
+              selectedRoot = fullNote;
+              key.classList.add('active');
+              generateChord();
+            });
+          } else if (noteObj.type === 'black') {
+            let key = document.createElement('div');
+            key.classList.add('black-key');
+            key.dataset.note = fullNote;
+            let offset = whiteKeyCount - 1;
+            key.style.width = blackKeyWidth + "px";
+            key.style.height = blackKeyHeight + "px";
+            key.style.left = (offset * whiteKeyWidth + whiteKeyWidth - (blackKeyWidth / 2)) + "px";
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+            key.addEventListener('click', (e) => {
+              e.stopPropagation();
+              clearSelection();
+              selectedRoot = fullNote;
+              key.classList.add('active');
+              generateChord();
+            });
+          }
+        }
+      }
+      
+      /***********************
+       * Gestione dei bottoni per la scelta dell’accordo
+       ***********************/
+      const chordButtons = document.querySelectorAll('.chord-button');
+      chordButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          chordButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          currentChordType = button.dataset.chord;
+          if (selectedRoot !== null) generateChord();
+        });
+      });
+      
+      /***********************
+       * Funzione per generare e visualizzare l’accordo
+       * Visualizza 3 righe (senza numeri d’ottava):
+       * 1) L’accordo (es. "Accordo Do maggiore: Do, Mi, Sol")
+       * 2) I gradi
+       * 3) I semitoni
+       * Inoltre, se il suono è attivo, riproduce il campionatore per 2 secondi.
+       ***********************/
+      function generateChord() {
+        clearChordHighlights();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let chordNotesDisplay = assignedChordNotes.map(n => formatNote(n, preferSharps, false));
+        let rootDisplay = formatNote(selectedRoot, preferSharps, false);
+        let line1 = "Accordo " + rootDisplay + " " + chordNamesItalian[currentChordType] + ": " + chordNotesDisplay.join(", ");
+        let line2 = "Gradi: " + (degreeNames[currentChordType] ? degreeNames[currentChordType].join(", ") : "");
+        let semitones = formula.map(f => f.semitones);
+        let line3 = "Semitoni: " + semitones.join(", ");
+        document.getElementById('chord-info').innerHTML = `
+          <div class="info-line chord-name">${line1}</div>
+          <div class="info-line degrees">${line2}</div>
+          <div class="info-line semitones">${line3}</div>
+        `;
+        // Prepariamo le note per la riproduzione: converte in notazione standard per il campionatore
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if(m) {
+            let notePart = m[1];
+            let octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        if(soundOn) {
+          Tone.start(); // Necessario per alcuni browser
+          piano.triggerAttackRelease(notesForPlayback, "2n");
+        }
+        // Evidenzia i tasti corrispondenti
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if(match) {
+            let notePart = match[1];
+            let octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if(keyElements[keyName]) {
+              keyElements[keyName].classList.add('active');
+            }
+          }
+        });
+      }
+      
+      /***********************
+       * Funzioni di utilità per rimuovere le evidenziazioni
+       ***********************/
+      function clearSelection() {
+        Object.values(keyElements).forEach(el => el.classList.remove('active'));
+        document.getElementById('chord-info').innerHTML = "";
+      }
+      function clearChordHighlights() {
+        Object.values(keyElements).forEach(el => el.classList.remove('active'));
+        if(selectedRoot && keyElements[selectedRoot]) {
+          keyElements[selectedRoot].classList.add('active');
+        }
+      }
+      
+      /***********************
+       * Setup del pulsante per il suono (on/off)
+       ***********************/
+      function setupSoundToggle() {
+        const container = document.getElementById("sound-toggle");
+        container.innerHTML = `<button id="sound-button" class="sound-button">🔇</button>`;
+        document.getElementById("sound-button").addEventListener("click", () => {
+          soundOn = !soundOn;
+          document.getElementById("sound-button").textContent = soundOn ? "🔊" : "🔇";
+        });
+      }
+      
+      /***********************
+       * Setup del pannello per la scelta degli accidentali
+       ***********************/
+      function setupAccidentalChoice() {
+        const container = document.getElementById("accidental-choice");
+        container.innerHTML = `
+          <button id="sharp-button" class="accidental-button active">#</button>
+          <button id="flat-button" class="accidental-button">b</button>
+        `;
+        document.getElementById("sharp-button").addEventListener("click", () => {
+          preferSharps = true;
+          document.getElementById("sharp-button").classList.add("active");
+          document.getElementById("flat-button").classList.remove("active");
+          updateKeyboardLabels();
+          if(selectedRoot) generateChord();
+        });
+        document.getElementById("flat-button").addEventListener("click", () => {
+          preferSharps = false;
+          document.getElementById("flat-button").classList.add("active");
+          document.getElementById("sharp-button").classList.remove("active");
+          updateKeyboardLabels();
+          if(selectedRoot) generateChord();
+        });
+      }
+      
+      /***********************
+       * Inizializza i pannelli di controllo
+       ***********************/
+      setupSoundToggle();
+      setupAccidentalChoice();
+      
+      /***********************
+       * Avvio automatico: imposta di default "C4" e l'accordo "maggiore" (Do maggiore) e genera l'accordo
+       ***********************/
+      selectedRoot = "C4";
+      // Evidenzia il tasto di default "C4"
+      if(keyElements[selectedRoot]) {
+        keyElements[selectedRoot].classList.add('active');
+      }
+      // Simula la scelta del bottone "Maggiore" (dati che currentChordType è già "" e il bottone corrispondente è il primo)
+      generateChord();
+      
+    });
+  </script>
+</body>
+</html>
