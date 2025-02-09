@@ -225,7 +225,7 @@
        * Impostazioni globali
        ***********************/
       let preferSharps = true;
-      let soundOn = false;
+      let soundOn = true;
       let currentChordType = "";
       let selectedRoot = "C4";
       let keyElements = {};
@@ -582,7 +582,7 @@
       
       function setupSoundToggle() {
         const container = document.getElementById("sound-toggle");
-        container.innerHTML = `<button id="sound-button" class="sound-button">🔇</button>`;
+        container.innerHTML = `<button id="sound-button" class="sound-button">🔊</button>`;
         document.getElementById("sound-button").addEventListener("click", () => {
           soundOn = !soundOn;
           document.getElementById("sound-button").textContent = soundOn ? "🔊" : "🔇";
