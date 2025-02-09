@@ -17,6 +17,15 @@
     #sound-toggle {
       margin-bottom: 10px;
     }
+    #toggle-extra-chords {
+  background-color: #4CAF50; /* verde */
+  color: white;
+  border: none;            /* rimuove eventuale bordo predefinito */
+  padding: 10px 15px;       /* puoi regolare il padding se vuoi */
+  font-size: 14px;          /* se desideri una dimensione diversa */
+  cursor: pointer;
+}
+
     .sound-button {
       padding: 8px 12px;
       font-size: 18px;
@@ -96,13 +105,13 @@
       max-width: 700px;
     }
     .chord-name {
-      background-color: #e0f7fa; /* azzurro chiaro */
+      background-color: #e0f7fa;
     }
     .degrees {
-      background-color: #ffe0b2; /* arancione chiaro */
+      background-color: #ffe0b2;
     }
     .semitones {
-      background-color: #e1bee7; /* lilla chiaro */
+      background-color: #e1bee7;
     }
     .grid-container {
       display: grid;
@@ -111,41 +120,37 @@
       justify-content: center;
     }
     header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px; /* Spazio tra il pulsante e il titolo */
-  margin-bottom: 20px;
-}
-
-.home-button {
-  background-color: #add8e6;
-  padding: 8px 12px;
-  border-radius: 5px;
-  text-decoration: none;
-  color: #000;
-  font-size: 16px;
-  transition: background-color 0.3s ease;
-}
-
-.home-button:hover {
-  background-color: #87cefa;
-}
-@media only screen and (max-width: 600px) {
-  #keyboard {
-    width: 100%;
-    overflow-x: auto; /* Abilita lo scrolling orizzontale */
-  }
-  .white-key, .black-key {
-    /* Riduci leggermente le dimensioni dei tasti */
-    width: calc(100px / 7); /* ad esempio, fissa una larghezza minima */
-    height: calc((100px / 7) * 5);
-  }
-  .key-label {
-    font-size: 10px; /* Riduci anche il font delle etichette */
-  }
-}
-
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .home-button {
+      background-color: #add8e6;
+      padding: 8px 12px;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #000;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    .home-button:hover {
+      background-color: #87cefa;
+    }
+    @media only screen and (max-width: 600px) {
+      #keyboard {
+        width: 100%;
+        overflow-x: auto;
+      }
+      .white-key, .black-key {
+        width: calc(100px / 7);
+        height: calc((100px / 7) * 5);
+      }
+      .key-label {
+        font-size: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -153,7 +158,7 @@
     <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
     <h1>Generatore di Accordi</h1>
   </header>
-    <p>Clicca su una nota della tastiera per selezionare la <strong>nota fondamentale</strong>, poi scegli il tipo di accordo.</p>
+  <p>Clicca su una nota della tastiera per selezionare la <strong>nota fondamentale</strong>, poi scegli il tipo di accordo.</p>
   
   <!-- Contenitore dei controlli: pulsante suono e scelta accidentale -->
   <div class="grid-container">
@@ -164,8 +169,9 @@
   <!-- Contenitore della tastiera -->
   <div id="keyboard"></div>
   
-  <!-- Bottoni per la scelta dell’accordo -->
+  <!-- Bottoni per la scelta degli accordi -->
   <div id="chord-buttons">
+    <!-- Bottoni originali sempre visibili -->
     <button class="chord-button" data-chord="">Maggiore</button>
     <button class="chord-button" data-chord="m">Minore</button>
     <button class="chord-button" data-chord="7">7 (dominante)</button>
@@ -176,24 +182,54 @@
     <button class="chord-button" data-chord="dim">Diminuito</button>
     <button class="chord-button" data-chord="sus2">Sus2</button>
     <button class="chord-button" data-chord="sus4">Sus4</button>
+    
+    <!-- Bottone per mostrare/nascondere i nuovi accordi -->
+    <button id="toggle-extra-chords" class="chord-button">più Accordi</button>
+    
+    <!-- Contenitore dei bottoni extra, nascosto di default -->
+    <div id="extra-chord-buttons" style="display: none;">
+      <!-- Qui inserisci i bottoni extra, ad esempio: -->
+      <button class="chord-button" data-chord="maj7#11">maggiore 7♯11</button>
+      <button class="chord-button" data-chord="m11">minore 11</button>
+      <button class="chord-button" data-chord="7#9">7♯9 (dominante #9)</button>
+      <button class="chord-button" data-chord="7b9">7♭9 (dominante b9)</button>
+      <button class="chord-button" data-chord="7b13">7♭13 (dominante b13)</button>
+      <button class="chord-button" data-chord="maj7b5">maggiore 7♭5</button>
+      <button class="chord-button" data-chord="add11">add11</button>
+      <button class="chord-button" data-chord="7#11">7♯11 (dominante #11)</button>
+      <button class="chord-button" data-chord="m7#5">minore 7♯5</button>
+      <button class="chord-button" data-chord="6/9">6/9</button>
+      <button class="chord-button" data-chord="6">6 (maggiore 6)</button>
+      <button class="chord-button" data-chord="m6">m6 (minore 6)</button>
+      <button class="chord-button" data-chord="9">9 (dominante 9)</button>
+      <button class="chord-button" data-chord="m9">m9 (minore 9)</button>
+      <button class="chord-button" data-chord="add9">add9 (maggiore add9)</button>
+      <button class="chord-button" data-chord="madd9">madd9 (minore add9)</button>
+      <button class="chord-button" data-chord="7sus4">7sus4</button>
+      <button class="chord-button" data-chord="7sus2">7sus2</button>
+      <button class="chord-button" data-chord="11">11 (dominante 11)</button>
+      <button class="chord-button" data-chord="13">13 (dominante 13)</button>
+    </div>
   </div>
+  
   
   <!-- Area per le informazioni dell'accordo -->
   <div id="chord-info"></div>
   
   <script defer>
+    const chordButtons = document.querySelectorAll('.chord-button');
+
     document.addEventListener("DOMContentLoaded", function() {
 
       /***********************
        * Impostazioni globali
        ***********************/
-      // Di default: suono spento, notazione flat, accordo "maggiore" e root "C4"
-      let preferSharps = true; // Puoi cambiarlo a false per flat, ma qui lascio default come sharp
-      let soundOn = false;     // Disattivo il suono di default
-      let currentChordType = ""; // Default: maggiore
-      let selectedRoot = "C4";   // Default: Do (C) nella 4° ottava
-      let keyElements = {};      // Mappa: nome del tasto (es. "C4") → elemento DOM
-
+      let preferSharps = true;
+      let soundOn = false;
+      let currentChordType = "";
+      let selectedRoot = "C4";
+      let keyElements = {};
+      
       /***********************
        * Mappe e formule degli accordi
        ***********************/
@@ -209,7 +245,146 @@
         "sus2":    [ {degree: 0, semitones: 0}, {degree: 2, semitones: 2}, {degree: 4, semitones: 7} ],
         "sus4":    [ {degree: 0, semitones: 0}, {degree: 2, semitones: 5}, {degree: 4, semitones: 7} ]
       };
-
+      
+      // Estensione delle formule per i nuovi accordi
+      Object.assign(chordFormulas, {
+        "maj7#11": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 3, semitones: 6 },   // #11: il 4° grado (F) elevato a F#
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 11 }
+        ],
+        "m11": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 3 },
+          { degree: 3, semitones: 5 },   // 11° (per C minore 11, F naturale)
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 2 }    // 9° (D nell'ottava successiva)
+        ],
+        "7#9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 3 }    // #9: D -> D#
+        ],
+        "7b9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 1 }    // b9: D -> Db
+        ],
+        "7b13": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 5, semitones: 8 },   // b13: per C, A -> Ab
+          { degree: 6, semitones: 10 }
+        ],
+        "maj7b5": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 6 },   // b5: G -> Gb
+          { degree: 6, semitones: 11 }
+        ],
+        "add11": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 3, semitones: 5 },   // 11° naturale (F)
+          { degree: 4, semitones: 7 }
+        ],
+        "7#11": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 3, semitones: 6 },   // #11: F#
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 }
+        ],
+        "m7#5": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 3 },
+          { degree: 4, semitones: 8 },   // #5: G -> G#
+          { degree: 6, semitones: 10 }
+        ],
+        "6/9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 5, semitones: 9 },   // 6°: A
+          { degree: 1, semitones: 2 }    // 9°: D (ottava superiore)
+        ],
+        "6": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 5, semitones: 9 }
+        ],
+        "m6": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 3 },
+          { degree: 4, semitones: 7 },
+          { degree: 5, semitones: 9 }
+        ],
+        "9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 2 }
+        ],
+        "m9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 3 },
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 2 }
+        ],
+        "add9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 1, semitones: 2 }
+        ],
+        "madd9": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 3 },
+          { degree: 4, semitones: 7 },
+          { degree: 1, semitones: 2 }
+        ],
+        "7sus4": [
+          { degree: 0, semitones: 0 },
+          { degree: 3, semitones: 5 },   // 4°: F
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 }
+        ],
+        "7sus2": [
+          { degree: 0, semitones: 0 },
+          { degree: 1, semitones: 2 },   // 2°: D
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 }
+        ],
+        "11": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 3, semitones: 5 },   // 11°: F
+          { degree: 4, semitones: 7 },
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 2 }
+        ],
+        "13": [
+          { degree: 0, semitones: 0 },
+          { degree: 2, semitones: 4 },
+          { degree: 4, semitones: 7 },
+          { degree: 5, semitones: 9 },   // 6°: A
+          { degree: 6, semitones: 10 },
+          { degree: 1, semitones: 2 }
+        ]
+      });
+      
+      // Nomi in italiano degli accordi
       const chordNamesItalian = {
         "": "maggiore",
         "m": "minore",
@@ -222,7 +397,31 @@
         "sus2": "sus2",
         "sus4": "sus4"
       };
-
+      
+      Object.assign(chordNamesItalian, {
+        "maj7#11": "maggiore 7♯11",
+        "m11": "minore 11",
+        "7#9": "7♯9 (dominante #9)",
+        "7b9": "7♭9 (dominante b9)",
+        "7b13": "7♭13 (dominante b13)",
+        "maj7b5": "maggiore 7♭5",
+        "add11": "add11",
+        "7#11": "7♯11 (dominante #11)",
+        "m7#5": "minore 7♯5",
+        "6/9": "6/9",
+        "6": "6 (maggiore 6)",
+        "m6": "m6 (minore 6)",
+        "9": "9 (dominante 9)",
+        "m9": "m9 (minore 9)",
+        "add9": "add9 (maggiore add9)",
+        "madd9": "madd9 (minore add9)",
+        "7sus4": "7sus4",
+        "7sus2": "7sus2",
+        "11": "11 (dominante 11)",
+        "13": "13 (dominante 13)"
+      });
+      
+      // Nomi dei gradi (intervalli)
       const degreeNames = {
         "": ["prima", "terza maggiore", "quinta giusta"],
         "m": ["prima", "terza minore", "quinta giusta"],
@@ -235,10 +434,32 @@
         "sus2": ["prima", "seconda", "quinta giusta"],
         "sus4": ["prima", "quarta", "quinta giusta"]
       };
-
+      
+      Object.assign(degreeNames, {
+        "maj7#11": ["prima", "terza maggiore", "quarta aumentata", "quinta giusta", "settima maggiore"],
+        "m11": ["prima", "terza minore", "undicesima", "quinta giusta", "settima minore", "nona"],
+        "7#9": ["prima", "terza maggiore", "quinta giusta", "settima minore", "nona aumentata"],
+        "7b9": ["prima", "terza maggiore", "quinta giusta", "settima minore", "nona bemolle"],
+        "7b13": ["prima", "terza maggiore", "quinta giusta", "sesta bemolle", "settima minore"],
+        "maj7b5": ["prima", "terza maggiore", "quinta diminuita", "settima maggiore"],
+        "add11": ["prima", "terza maggiore", "undicesima", "quinta giusta"],
+        "7#11": ["prima", "terza maggiore", "quarta aumentata", "quinta giusta", "settima minore"],
+        "m7#5": ["prima", "terza minore", "quinta aumentata", "settima minore"],
+        "6/9": ["prima", "terza maggiore", "quinta giusta", "sesta maggiore", "nona"],
+        "6": ["prima", "terza maggiore", "quinta giusta", "sesta maggiore"],
+        "m6": ["prima", "terza minore", "quinta giusta", "sesta maggiore"],
+        "9": ["prima", "terza maggiore", "quinta giusta", "settima minore", "nona"],
+        "m9": ["prima", "terza minore", "quinta giusta", "settima minore", "nona"],
+        "add9": ["prima", "terza maggiore", "quinta giusta", "nona"],
+        "madd9": ["prima", "terza minore", "quinta giusta", "nona"],
+        "7sus4": ["prima", "quarta", "quinta giusta", "settima minore"],
+        "7sus2": ["prima", "seconda", "quinta giusta", "settima minore"],
+        "11": ["prima", "terza maggiore", "quarta", "quinta giusta", "settima minore", "nona"],
+        "13": ["prima", "terza maggiore", "quinta giusta", "sesta", "settima minore", "nona"]
+      });
+      
       /***********************
-       * Funzione helper per formattare una nota
-       * Se withOctave è true, mantiene il numero d'ottava; altrimenti lo esclude.
+       * Funzioni helper per le note e accidentali
        ***********************/
       function formatNote(note, useSharps, withOctave) {
         let m = note.match(/^([A-G](?:#|b)*)(\d+)?$/);
@@ -253,10 +474,7 @@
         }
         return note;
       }
-
-      /***********************
-       * Funzioni per il calcolo dell'alterazione e del pitch (0-11)
-       ***********************/
+      
       function accidentalValue(acc) {
         let value = 0;
         for (let ch of acc) {
@@ -265,6 +483,7 @@
         }
         return value;
       }
+      
       function getPitch(note) {
         let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
         let letter = note[0];
@@ -273,13 +492,9 @@
         return ((base + accidentalValue(acc)) % 12 + 12) % 12;
       }
       
-      // Array per la notazione flat (semplice)
       const italianSharpNames = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
       const italianFlatNames  = ["Do","Reb","Re","Mib","Mi","Fa","Solb","Sol","Lab","La","Sib","Si"];
       
-      /***********************
-       * Per la visualizzazione classica (sharp mode) preserviamo gli accidentali
-       ***********************/
       function convertToItalianNoteName(noteStr) {
         const mapping = {
           "A": "La",
@@ -294,6 +509,7 @@
         let accidental = noteStr.slice(1);
         return mapping[letter] + accidental;
       }
+      
       function convertToItalianNoteNameWithOctave(noteStr) {
         let m = noteStr.match(/^([A-G](?:#|b)*)(\d+)$/);
         if(m) {
@@ -302,9 +518,6 @@
         return noteStr;
       }
       
-      /***********************
-       * Assegna gli ottavi alle note dell'accordo in ordine ascendente
-       ***********************/
       function assignChordOctaves(chordNotes, baseOctave, rootNote) {
         let assigned = [];
         let rootPitch = getPitch(rootNote);
@@ -323,10 +536,6 @@
         return assigned;
       }
       
-      /***********************
-       * Funzione di "spelling" classico
-       * Calcola la nota target (senza ottava) a partire dalla radice, dal grado e dai semitoni da aggiungere.
-       ***********************/
       function spellNote(root, degree, semitoneOffset) {
         let letters = ["A","B","C","D","E","F","G"];
         let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
@@ -350,9 +559,6 @@
         return expectedLetter + accStr;
       }
       
-      /***********************
-       * Converte una nota classica (senza ottava) nella notazione dei tasti (semplice)
-       ***********************/
       function classicalToKeyboard(note) {
         let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
         let letter = note[0];
@@ -363,9 +569,6 @@
         return keyboardNames[pitch];
       }
       
-      /***********************
-       * Inizializza il campionatore per il suono del pianoforte (Tone.js)
-       ***********************/
       const piano = new Tone.Sampler({
         urls: {
           "C4": "C4.mp3",
@@ -377,9 +580,6 @@
         baseUrl: "https://tonejs.github.io/audio/salamander/"
       }).toDestination();
       
-      /***********************
-       * Setup del pulsante per il suono (on/off)
-       ***********************/
       function setupSoundToggle() {
         const container = document.getElementById("sound-toggle");
         container.innerHTML = `<button id="sound-button" class="sound-button">🔇</button>`;
@@ -389,9 +589,6 @@
         });
       }
       
-      /***********************
-       * Setup del pannello per la scelta degli accidentali
-       ***********************/
       function setupAccidentalChoice() {
         const container = document.getElementById("accidental-choice");
         container.innerHTML = `
@@ -414,9 +611,6 @@
         });
       }
       
-      /***********************
-       * Aggiorna le etichette dei tasti (solo quelli con .key-label)
-       ***********************/
       function updateKeyboardLabels() {
         Object.values(keyElements).forEach(key => {
           let baseNote = key.dataset.note.replace(/\d+/, "");
@@ -428,9 +622,6 @@
         });
       }
       
-      /***********************
-       * Imposta la tastiera (due ottave)
-       ***********************/
       const keyboard = document.getElementById('keyboard');
       const totalWhiteKeys = 2 * 7;
       const containerWidth = keyboard.clientWidth;
@@ -504,9 +695,6 @@
         }
       }
       
-      /***********************
-       * Gestione dei bottoni per la scelta dell’accordo
-       ***********************/
       const chordButtons = document.querySelectorAll('.chord-button');
       chordButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -517,14 +705,6 @@
         });
       });
       
-      /***********************
-       * Funzione per generare e visualizzare l’accordo
-       * Visualizza 3 righe (senza numeri d’ottava):
-       * 1) L’accordo (es. "Accordo Do maggiore: Do, Mi, Sol")
-       * 2) I gradi
-       * 3) I semitoni
-       * Inoltre, se il suono è attivo, riproduce il campionatore per 2 secondi.
-       ***********************/
       function generateChord() {
         clearChordHighlights();
         let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
@@ -542,14 +722,13 @@
         let rootDisplay = formatNote(selectedRoot, preferSharps, false);
         let line1 = "Accordo " + rootDisplay + " " + chordNamesItalian[currentChordType] + ": " + chordNotesDisplay.join(", ");
         let line2 = "Gradi: " + (degreeNames[currentChordType] ? degreeNames[currentChordType].join(", ") : "");
-        let semitones = formula.map(f => f.semitones);
-        let line3 = "Semitoni: " + semitones.join(", ");
+        let semitoni = formula.map(f => f.semitones);
+        let line3 = "Semitoni: " + semitoni.join(", ");
         document.getElementById('chord-info').innerHTML = `
           <div class="info-line chord-name">${line1}</div>
           <div class="info-line degrees">${line2}</div>
           <div class="info-line semitones">${line3}</div>
         `;
-        // Prepariamo le note per la riproduzione: converte in notazione standard per il campionatore
         let notesForPlayback = assignedChordNotes.map(note => {
           let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
           if(m) {
@@ -560,10 +739,9 @@
           return note;
         });
         if(soundOn) {
-          Tone.start(); // Necessario per alcuni browser
+          Tone.start();
           piano.triggerAttackRelease(notesForPlayback, "2n");
         }
-        // Evidenzia i tasti corrispondenti
         assignedChordNotes.forEach(note => {
           let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
           if(match) {
@@ -578,13 +756,11 @@
         });
       }
       
-      /***********************
-       * Funzioni di utilità per rimuovere le evidenziazioni
-       ***********************/
       function clearSelection() {
         Object.values(keyElements).forEach(el => el.classList.remove('active'));
         document.getElementById('chord-info').innerHTML = "";
       }
+      
       function clearChordHighlights() {
         Object.values(keyElements).forEach(el => el.classList.remove('active'));
         if(selectedRoot && keyElements[selectedRoot]) {
@@ -592,61 +768,26 @@
         }
       }
       
-      /***********************
-       * Setup del pulsante per il suono (on/off)
-       ***********************/
-      function setupSoundToggle() {
-        const container = document.getElementById("sound-toggle");
-        container.innerHTML = `<button id="sound-button" class="sound-button">🔇</button>`;
-        document.getElementById("sound-button").addEventListener("click", () => {
-          soundOn = !soundOn;
-          document.getElementById("sound-button").textContent = soundOn ? "🔊" : "🔇";
-        });
-      }
-      
-      /***********************
-       * Setup del pannello per la scelta degli accidentali
-       ***********************/
-      function setupAccidentalChoice() {
-        const container = document.getElementById("accidental-choice");
-        container.innerHTML = `
-          <button id="sharp-button" class="accidental-button active">#</button>
-          <button id="flat-button" class="accidental-button">b</button>
-        `;
-        document.getElementById("sharp-button").addEventListener("click", () => {
-          preferSharps = true;
-          document.getElementById("sharp-button").classList.add("active");
-          document.getElementById("flat-button").classList.remove("active");
-          updateKeyboardLabels();
-          if(selectedRoot) generateChord();
-        });
-        document.getElementById("flat-button").addEventListener("click", () => {
-          preferSharps = false;
-          document.getElementById("flat-button").classList.add("active");
-          document.getElementById("sharp-button").classList.remove("active");
-          updateKeyboardLabels();
-          if(selectedRoot) generateChord();
-        });
-      }
-      
-      /***********************
-       * Inizializza i pannelli di controllo
-       ***********************/
       setupSoundToggle();
       setupAccidentalChoice();
       
-      /***********************
-       * Avvio automatico: imposta di default "C4" e l'accordo "maggiore" (Do maggiore) e genera l'accordo
-       ***********************/
       selectedRoot = "C4";
-      // Evidenzia il tasto di default "C4"
       if(keyElements[selectedRoot]) {
         keyElements[selectedRoot].classList.add('active');
       }
-      // Simula la scelta del bottone "Maggiore" (dati che currentChordType è già "" e il bottone corrispondente è il primo)
       generateChord();
-      
     });
+    document.getElementById("toggle-extra-chords").addEventListener("click", function() {
+  const extraDiv = document.getElementById("extra-chord-buttons");
+  if (extraDiv.style.display === "none") {
+    extraDiv.style.display = "block";
+    this.textContent = "meno Accordi";
+  } else {
+    extraDiv.style.display = "none";
+    this.textContent = "più Accordi";
+  }
+});
+
   </script>
 </body>
 </html>
