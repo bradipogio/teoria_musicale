@@ -118,26 +118,36 @@
       }
     }
     /* Stile del pulsante Home */
-    .back-button {
-      display: inline-block;
-      padding: 8px 12px;
-      font-size: 18px;
-      color: white;
-      background-color: #6d6d6d;
-      text-decoration: none;
-      border-radius: 5px;
-      transition: background 0.3s ease;
-    }
-    .back-button:hover {
-      background-color: #313131;
-    }
+    header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px; /* Spazio tra il pulsante e il titolo */
+  margin-bottom: 20px;
+}
+
+.home-button {
+  background-color: #add8e6;
+  padding: 8px 12px;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #000;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.home-button:hover {
+  background-color: #87cefa;
+}
   </style>
 </head>
 <body>
+  
   <div class="container">
-    <h1>Durata delle Note</h1>
-    
-    <!-- Controlli -->
+    <header>
+      <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+      <h1>Note Sul Pentagramma</h1>
+    </header>
     <div class="controls">
       <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="back-button">Home</a> 
       <br><br>
@@ -156,7 +166,7 @@
     
     <!-- Immagine di riferimento -->
     <div id="referenceContainer">
-      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/Schermata%202025-02-08%20alle%2000.13.52.png?raw=true" alt="Riferimento">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/valori-musicali.png?raw=true" alt="Riferimento">
     </div>
     
     <!-- Pentagramma -->
@@ -253,7 +263,7 @@
       }
       
       // Possibilità (ad es. 20%) che venga generato un elemento come pausa invece che nota
-      isRest = (Math.random() < 0.4);
+      isRest = (Math.random() < 0.2);
       
       // Seleziona una durata casuale
       const randomIndex = Math.floor(Math.random() * allowedDurations.length);

@@ -3,23 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Note sul Pentagramma</title>
   <!-- Includiamo VexFlow da CDN (versione 3.x per compatibilità) -->
   <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
-
     /* Reset di base */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: 'Roboto', sans-serif;
       background-color: #f7f7f7;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       padding: 20px;
+      min-height: 100vh;
     }
     .container {
       background: #fff;
@@ -30,8 +33,12 @@
       width: 100%;
       text-align: center;
     }
-    h1 { margin-bottom: 20px; font-size: 28px; font-weight: 500; }
-    /* Controlli: dropdown per la chiave, radio group per la difficoltà e bottone per il riferimento */
+    h1 {
+      margin-bottom: 20px;
+      font-size: 28px;
+      font-weight: 500;
+    }
+    /* Controlli */
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -40,8 +47,11 @@
       gap: 10px;
       margin-bottom: 20px;
     }
-    label { font-size: 1rem; }
-    select, button {
+    label {
+      font-size: 1rem;
+    }
+    select,
+    button {
       padding: 10px 15px;
       font-size: 1rem;
       border: 1px solid #ddd;
@@ -50,15 +60,23 @@
       cursor: pointer;
       transition: background 0.3s ease;
     }
-    select:focus, button:focus { outline: none; border-color: #aaa; }
-    button:hover { background: #f0f0f0; }
+    select:focus,
+    button:focus {
+      outline: none;
+      border-color: #aaa;
+    }
+    button:hover {
+      background: #f0f0f0;
+    }
     /* Radio group per la difficoltà */
     .radio-group {
       display: flex;
       gap: 10px;
       align-items: center;
     }
-    .radio-group input[type="radio"] { display: none; }
+    .radio-group input[type="radio"] {
+      display: none;
+    }
     .radio-group label {
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -92,7 +110,10 @@
       overflow: hidden;
     }
     /* Area in cui VexFlow disegna il pentagramma */
-    #notation { width: 100%; height: 100%; }
+    #notation {
+      width: 100%;
+      height: 100%;
+    }
     /* Bottoni per le risposte (le lettere delle note) */
     .answer-buttons {
       display: flex;
@@ -113,25 +134,28 @@
       flex: 1 1 auto;
       margin: 5px;
     }
-    .answer-button:hover { background: #0056b3; }
-    /* Feedback */
-    #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
-    /* Sezione statistiche */
-    .stats { margin-top: 20px; }
-    .stats p { font-size: 1.5rem; margin: 5px 0; }
-    /* Responsive */
-    @media (max-width: 480px) {
-      h1 { font-size: 1.5rem; }
-      .answer-button, select, button, .radio-group label {
-        font-size: 0.9rem;
-        padding: 8px 12px;
-      }
+    .answer-button:hover {
+      background: #0056b3;
     }
-        /* Stile del pulsante Home */
-        .back-button {
+    /* Feedback */
+    #result {
+      font-weight: 500;
+      margin-top: 15px;
+      font-size: 1.2rem;
+    }
+    /* Sezione statistiche */
+    .stats {
+      margin-top: 20px;
+    }
+    .stats p {
+      font-size: 1.5rem;
+      margin: 5px 0;
+    }
+    /* Stile del pulsante Home */
+    .back-button {
       display: inline-block;
-      padding: 8px 12px;
-      font-size: 18px;
+      padding: 6px 12px;
+      font-size: 12px;
       color: white;
       background-color: #6d6d6d;
       text-decoration: none;
@@ -142,50 +166,93 @@
       background-color: #313131;
     }
     footer {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+    /* Responsive */
+    @media (max-width: 480px) {
+      body {
+        align-items: flex-start;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .answer-button,
+      select,
+      button,
+      .radio-group label {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+      #notationWrapper {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+      }
+    }
+    header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px; /* Spazio tra il pulsante e il titolo */
+  margin-bottom: 20px;
 }
 
+.home-button {
+  background-color: #add8e6;
+  padding: 8px 12px;
+  border-radius: 5px;
+  text-decoration: none;
+  color: #000;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.home-button:hover {
+  background-color: #87cefa;
+}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Note sul Pentagramma</h1>
-     <!-- Controlli -->
-     <div class="controls">
-      <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="back-button">Home</a> 
-      <br> <br>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Note Sul Pentagramma</h1>
+  </header>
     <!-- Controlli -->
-    <div class="controls">
-      <label for="clefSelect">Seleziona chiave:</label>
-      <select id="clefSelect">
-        <option value="treble">Violino</option>
-        <option value="bass">Basso</option>
-        <option value="random">Random</option>
-      </select>
-      
-      <!-- Radio group per la difficoltà -->
-      <div class="radio-group">
-        <input type="radio" id="easy" name="difficulty" value="easy" checked>
-        <label for="easy">Facile</label>
-        <input type="radio" id="hard" name="difficulty" value="hard">
-        <label for="hard">Difficile</label>
+  
+      <!-- Raggruppa insieme gli altri controlli -->
+      <div class="controls">
+        <label for="clefSelect">Seleziona chiave:</label>
+        <select id="clefSelect">
+          <option value="treble">Violino</option>
+          <option value="bass">Basso</option>
+          <option value="random">Random</option>
+        </select>
+        <!-- Radio group per la difficoltà -->
+        <div class="radio-group">
+          <input type="radio" id="easy" name="difficulty" value="easy" checked>
+          <label for="easy">Facile</label>
+          <input type="radio" id="hard" name="difficulty" value="hard">
+          <label for="hard">Difficile</label>
+        </div>
+        <button id="toggleReference">Mostra Riferimento</button>
+        <!-- Nuovo pulsante per abilitare/disabilitare l'ingresso MIDI -->
+        <button id="toggleMidi">🎹 usa tastiera MIDI</button>
       </div>
-      
-      <button id="toggleReference">Mostra Riferimento</button>
     </div>
-    
     <!-- Immagine di riferimento -->
     <div id="referenceContainer">
       <img src="https://github.com/bradipogio/teoria_musicale/blob/main/Schermata-2021-01-19-alle-10.03.13-1030x299.png?raw=true" alt="Riferimento">
     </div>
-    
     <!-- Pentagramma -->
     <div id="notationWrapper">
       <div id="notation"></div>
     </div>
-    
     <!-- Bottoni per le risposte (le lettere) -->
     <div class="answer-buttons">
       <button class="answer-button" data-key="C">Do</button>
@@ -196,33 +263,34 @@
       <button class="answer-button" data-key="A">La</button>
       <button class="answer-button" data-key="B">Si</button>
     </div>
-
     <!-- Statistiche e Reset -->
     <div class="stats">
       <p id="scoreInfo">Corrette: 0, Sbagliate: 0, <br>Percentuale: 100%</p>
       <button id="resetButton">Reset</button>
     </div>
-        
     <!-- Feedback -->
     <p id="result"></p>
   </div>
-  <footer><a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fbradipogio.github.io%2Fteoria_musicale%2Fsolfeggio0.0.html&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false"/></a></span></footer>
 
-  
+
   <script>
+    // -----------------------------
+    // Codice già presente (logica del pentagramma, generazione note, statistiche, ecc.)
+    // -----------------------------
+
     // Variabili statistiche
     let correctCount = 0;
     let wrongCount = 0;
-    
+
     // Variabile per la difficoltà ("easy" o "hard")
     let difficulty = "easy";
-    
+
     // Array delle lettere delle note
     const notes = ["C", "D", "E", "F", "G", "A", "B"];
     let currentNote = "";
     let currentClef = "treble";
-    let currentPitch = ""; // es. "c/4"
-    let lastnote ="";
+    let currentPitch = "";
+    let lastnote = "";
 
     const italianNoteNames = {
       "C": "Do",
@@ -233,9 +301,8 @@
       "A": "La",
       "B": "Si"
     };
-    
-    // Mapping per la chiave di basso: associa la nota "interna" a quella che viene visualizzata
-    // Esempio: se la nota interna è "C", in basso si visualizza come "E".
+
+    // Mapping per la chiave di basso (per trasposizione)
     const bassTransposition = {
       "C": "E",
       "D": "F",
@@ -245,9 +312,8 @@
       "A": "C",
       "B": "D"
     };
-    
-    // --- Mapping per ogni modalità ---
-    // Violino Facile (range [C4, F5]) – usiamo pitch fissi (scelti dall’array)
+
+    // Mappature per le diverse modalità
     const trebleEasyMapping = {
       "C": ["c/4", "c/5"],
       "D": ["d/4", "d/5"],
@@ -257,8 +323,7 @@
       "A": ["a/4"],
       "B": ["b/4"]
     };
-    
-    // Violino Difficile (range [F3, C6])
+
     const trebleHardMapping = {
       "C": ["c/4", "c/5", "c/6"],
       "D": ["d/4", "d/5"],
@@ -268,9 +333,7 @@
       "A": ["a/3", "a/4", "a/5"],
       "B": ["b/3", "b/4", "b/5"]
     };
-    
-    // Basso Facile (range [E4, A5])
-    // (Per il basso usiamo pitch fissi in ottava 4; i valori ottenuti andranno trasposti per mostrare il nome corretto)
+
     const bassEasyMapping = {
       "C": ["c/4", "c/5"],
       "D": ["d/4", "d/5"],
@@ -280,8 +343,7 @@
       "A": ["a/4"],
       "B": ["b/4"]
     };
-    
-    // Basso Difficile (range [A3, E6])
+
     const bassHardMapping = {
       "C": ["c/4", "c/5", "c/6"],
       "D": ["d/4", "d/5"],
@@ -291,17 +353,16 @@
       "A": ["a/3", "a/4", "a/5"],
       "B": ["b/3", "b/4", "b/5"]
     };
-    
+
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
-    
-    // Funzione per disegnare la nota dato un pitch (es. "c/4") e la clef
+
+    // Funzione per disegnare la nota (data una pitch e la chiave)
     function drawNoteWithPitch(pitch, clef) {
       notationDiv.innerHTML = "";
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
       renderer.resize(220, 200);
       const context = renderer.getContext();
-      // Posiziona il pentagramma a y = 50 per maggiore spazio verticale
       const stave = new VF.Stave(10, 50, 200);
       stave.addClef(clef).setContext(context).draw();
       const staveNote = new VF.StaveNote({ keys: [pitch], duration: "q" });
@@ -310,82 +371,66 @@
       new VF.Formatter().joinVoices([voice]).format([voice], 100);
       voice.draw(context, stave);
     }
-    
-    // Funzione per generare una nota casuale e determinare il pitch in base a clef e difficoltà
+
+    // Genera una nota casuale e la visualizza
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
       currentNote = notes[randomIndex];
-      
-      // Seleziona la clef dal dropdown
       const clefChoice = document.getElementById("clefSelect").value;
       if (clefChoice === "random") {
         currentClef = Math.random() < 0.5 ? "treble" : "bass";
       } else {
         currentClef = clefChoice;
       }
-      
-      // Legge la difficoltà dal radio group
       const radios = document.getElementsByName("difficulty");
       radios.forEach(radio => { if (radio.checked) difficulty = radio.value; });
-      
-      // Determina il pitch in base alla difficoltà e alla clef
       if (difficulty === "easy") {
         if (currentClef === "treble") {
           const allowed = trebleEasyMapping[currentNote];
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
-        } else { // bass
+        } else {
           const allowed = bassEasyMapping[currentNote];
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
         }
-      } else { // modalità "hard"
+      } else {
         if (currentClef === "treble") {
           const allowed = trebleHardMapping[currentNote];
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
-        } else { // bass
+        } else {
           const allowed = bassHardMapping[currentNote];
           currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
         }
       }
-      if (currentNote==lastnote){
+      if (currentNote === lastnote) {
         generateRandomNote();
-      }else{
-      drawNoteWithPitch(currentPitch, currentClef);
-      document.getElementById("result").textContent = "";
-      lastnote = currentNote;}
+      } else {
+        drawNoteWithPitch(currentPitch, currentClef);
+        document.getElementById("result").textContent = "";
+        lastnote = currentNote;
+      }
     }
-    
+
     // Aggiorna le statistiche
-
-
-        function updateStats() {
-    const total = correctCount + wrongCount;
-    const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-    const scoreInfo = document.getElementById("scoreInfo");
-
-    scoreInfo.innerHTML = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, <br>
-        Percentuale: <span id="percentageValue">${percentage}%</span>`;
-
-    const percentageValue = document.getElementById("percentageValue");
-
-    // Cambia il colore della percentuale
-    if (percentage >= 50) {
-        percentageValue.style.color = "darkgreen"; // Verde scuro
-    } else {
-        percentageValue.style.color = "darkred"; // Rosso scuro
+    function updateStats() {
+      const total = correctCount + wrongCount;
+      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+      const scoreInfo = document.getElementById("scoreInfo");
+      scoreInfo.innerHTML = `Corrette: ${correctCount}, Sbagliate: ${wrongCount}, <br>
+          Percentuale: <span id="percentageValue">${percentage}%</span>`;
+      const percentageValue = document.getElementById("percentageValue");
+      if (percentage >= 50) {
+          percentageValue.style.color = "darkgreen";
+      } else {
+          percentageValue.style.color = "darkred";
+      }
     }
-}
-    
-    
-    // Controlla se la risposta (basata sulla lettera, ignorando il pitch) è corretta.
-    // Per il basso, accettiamo sia la nota "interna" (currentNote) sia la nota trasposta (bassTransposition[currentNote]).
-   
-    
+
+    // Controlla la risposta selezionata
     function checkAnswer(selectedKey) {
       if (currentClef === "bass") {
         const altNote = bassTransposition[currentNote];
         if (selectedKey === altNote) {
-          document.getElementById("result").textContent =
-            `Corretto!`;
+          document.getElementById("result").textContent = `Corretto!`;
           correctCount++;
           updateStats();
           setTimeout(generateRandomNote, 100);
@@ -395,20 +440,21 @@
           wrongCount++;
           updateStats();
         }
-      } else { // per la chiave di violino
+      } else {
         if (selectedKey === currentNote) {
           document.getElementById("result").textContent = "Corretto!";
           correctCount++;
           updateStats();
           setTimeout(generateRandomNote, 100);
         } else {
-          document.getElementById("result").textContent = `Sbagliato! La risposta corretta era ${italianNoteNames[currentNote]}`;
+          document.getElementById("result").textContent =
+            `Sbagliato! La risposta corretta era ${italianNoteNames[currentNote]}`;
           wrongCount++;
           updateStats();
         }
       }
     }
-    
+
     // Event listener per i bottoni delle risposte
     const answerButtons = document.querySelectorAll(".answer-button");
     answerButtons.forEach(button => {
@@ -417,7 +463,7 @@
         checkAnswer(selectedKey);
       });
     });
-    
+
     // Gestione del bottone per mostrare/nascondere l'immagine di riferimento
     const toggleReferenceButton = document.getElementById("toggleReference");
     const referenceContainer = document.getElementById("referenceContainer");
@@ -430,7 +476,7 @@
         toggleReferenceButton.textContent = "Mostra Riferimento";
       }
     });
-    
+
     // Gestione del bottone di reset
     document.getElementById("resetButton").addEventListener("click", function() {
       correctCount = 0;
@@ -439,24 +485,101 @@
       document.getElementById("result").textContent = "";
       generateRandomNote();
     });
-    
-    // Aggiungi listener per il cambio di impostazioni (clef e difficoltà)
+
+    // Aggiorna le impostazioni quando cambiano clef o difficoltà
     document.getElementById("clefSelect").addEventListener("change", function() {
       generateRandomNote();
     });
-    
     const difficultyRadios = document.getElementsByName("difficulty");
     difficultyRadios.forEach(radio => {
       radio.addEventListener("change", function() {
         generateRandomNote();
       });
     });
-    
+
     // Nascondi l'immagine di riferimento all'avvio
     referenceContainer.style.display = "none";
-    
+
     // Genera la prima nota al caricamento della pagina
     generateRandomNote();
+
+    // -----------------------------
+    // Nuova sezione: gestione dell'ingresso MIDI
+    // -----------------------------
+
+    // Variabili per l'accesso MIDI
+    let midiAccess = null;
+    let midiEnabled = false;
+
+    // Funzione per attivare/disattivare il MIDI
+    function toggleMidi() {
+      if (!midiEnabled) {
+        if (navigator.requestMIDIAccess) {
+          navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+        } else {
+          console.warn("La Web MIDI API non è supportata dal tuo browser.");
+        }
+      } else {
+        disableMidi();
+      }
+    }
+
+    // Se l'accesso MIDI va a buon fine, assegna gli handler agli input
+    function onMIDISuccess(midi) {
+      midiAccess = midi;
+      for (let input of midiAccess.inputs.values()) {
+        input.onmidimessage = handleMIDIMessage;
+      }
+      midiEnabled = true;
+      document.getElementById("toggleMidi").textContent = "⌨ Disattiva MIDI";
+    }
+
+    // In caso di fallimento nell'accesso MIDI
+    function onMIDIFailure() {
+      console.error("Impossibile accedere ai dispositivi MIDI.");
+    }
+
+    // Disabilita gli handler MIDI e aggiorna lo stato
+    function disableMidi() {
+      if (midiAccess) {
+        for (let input of midiAccess.inputs.values()) {
+          input.onmidimessage = null;
+        }
+      }
+      midiEnabled = false;
+      document.getElementById("toggleMidi").textContent = "⌨ Attiva MIDI";
+    }
+
+    // Gestione dei messaggi MIDI
+    function handleMIDIMessage(event) {
+      // I dati MIDI sono [status, note, velocity]
+      let [status, note, velocity] = event.data;
+      if ((status === 144 && velocity > 0) || status === 128) {
+        const midiNoteLetter = midiNoteToLetter(note);
+        if (midiNoteLetter) {
+          console.log("Nota MIDI ricevuta:", midiNoteLetter);
+          checkAnswer(midiNoteLetter);
+        }
+      }
+    }
+
+    // Mappa il numero della nota MIDI alla lettera (solo note naturali)
+    function midiNoteToLetter(noteNumber) {
+      const mod = noteNumber % 12;
+      switch (mod) {
+        case 0:  return "C";
+        case 2:  return "D";
+        case 4:  return "E";
+        case 5:  return "F";
+        case 7:  return "G";
+        case 9:  return "A";
+        case 11: return "B";
+        default: return null;
+      }
+    }
+
+    // Associa il pulsante per il toggle MIDI alla funzione
+    document.getElementById("toggleMidi").addEventListener("click", toggleMidi);
   </script>
 </body>
 </html>
