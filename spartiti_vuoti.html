@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Galleria Immagini</title>
+  <title>Galleria PDF</title>
   <style>
-    /* Stile base per la pagina */
     body {
       font-family: Arial, sans-serif;
       text-align: center;
@@ -13,13 +12,10 @@
       margin: 0;
       padding: 20px;
     }
-    
     h1 {
       margin-bottom: 20px;
       color: #333;
     }
-
-    /* Contenitore della galleria */
     .gallery {
       display: flex;
       flex-wrap: wrap;
@@ -28,106 +24,27 @@
       max-width: 1000px;
       margin: auto;
     }
-
-    /* Stile delle immagini in anteprima */
-    .gallery img {
+    .gallery embed {
       width: 150px;
       height: 100px;
-      object-fit: cover;
+      border: 1px solid #ccc;
       border-radius: 8px;
       cursor: pointer;
       transition: transform 0.2s;
     }
-
-    .gallery img:hover {
+    .gallery embed:hover {
       transform: scale(1.1);
     }
-
-    /* Modal (ingrandimento immagine) */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-    }
-
-    .modal img {
-      max-width: 90%;
-      max-height: 80vh;
-      border-radius: 8px;
-    }
-
-    /* Pulsante di chiusura */
-    .close {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      font-size: 30px;
-      color: white;
-      cursor: pointer;
-    }
-
-    /* Pulsante di download */
-    .download-btn {
-      margin-top: 10px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-
-    .download-btn:hover {
-      background: #45a049;
-    }
-
   </style>
 </head>
 <body>
-
   <h1>Spartiti Vuoti</h1>
-
   <div class="gallery">
-    <!-- Aggiungi le tue immagini qui -->
-    <img src="https://bradipogio.github.io/teoria_musicale/blob/main/tab.pdf" alt="Tablatura" onclick="openModal(this)">
-    <img src="https://bradipogio.github.io/teoria_musicale/blob/main/violino.pdf" alt="Chiave di Violino" onclick="openModal(this)">
-    <img src="https://bradipogio.github.io/teoria_musicale/blob/main/violino_basso.pdf" alt="Violino e Basso" onclick="openModal(this)">
-    <img src="https://bradipogio.github.io/teoria_musicale/blob/main/violino_tab.pdf" alt="Violino e Tab" onclick="openModal(this)">
+    <!-- Mostro il PDF in un embed; cliccandoci sopra potresti aprirlo in una nuova finestra -->
+    <embed src="https://bradipogio.github.io/teoria_musicale/tab.pdf" type="application/pdf" onclick="window.open(this.src, '_blank')">
+    <embed src="https://bradipogio.github.io/teoria_musicale/violino.pdf" type="application/pdf" onclick="window.open(this.src, '_blank')">
+    <embed src="https://bradipogio.github.io/teoria_musicale/violino_basso.pdf" type="application/pdf" onclick="window.open(this.src, '_blank')">
+    <embed src="https://bradipogio.github.io/teoria_musicale/violino_tab.pdf" type="application/pdf" onclick="window.open(this.src, '_blank')">
   </div>
-
-  <!-- Modal -->
-  <div id="modal" class="modal">
-    <span class="close" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="" alt="Immagine">
-    <a id="downloadLink" class="download-btn" download>Scarica</a>
-  </div>
-
-  <script>
-    function openModal(imgElement) {
-      let modal = document.getElementById("modal");
-      let modalImg = document.getElementById("modalImg");
-      let downloadLink = document.getElementById("downloadLink");
-
-      modal.style.display = "flex";
-      modalImg.src = imgElement.src;
-
-      // Imposta il link per il download
-      downloadLink.href = imgElement.src;
-      downloadLink.download = imgElement.alt + ".jpg";
-    }
-
-    function closeModal() {
-      document.getElementById("modal").style.display = "none";
-    }
-  </script>
-
 </body>
 </html>
