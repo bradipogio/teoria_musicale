@@ -132,12 +132,15 @@
       background: #007BFF;
       color: #fff;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background 0.3s ease, transform 0.2s;
+      min-width: 200;
       flex: 1 1 auto;
       margin: 5px;
     }
     .answer-button:hover {
       background: #0056b3;
+      transform: scale(1.05);
+
     }
     /* Feedback */
     #result {
@@ -148,6 +151,7 @@
     /* Sezione statistiche */
     .stats {
       margin-top: 20px;
+      text-align: center;
     }
     .stats p {
       font-size: 1.5rem;

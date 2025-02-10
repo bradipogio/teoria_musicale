@@ -103,12 +103,15 @@
       background: #007BFF;
       color: #fff;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background 0.3s ease, transform 0.2s;
       flex: 1 1 auto;
       margin: 5px;
       text-align: center;
     }
-    .answer-button:hover { background: #0056b3; }
+    .answer-button:hover { background: #0056b3; 
+      transform: scale(1.05);
+    }
+    
     #result { font-weight: 500; margin-top: 15px; font-size: 1.2rem; }
     .stats { margin-top: 20px; }
     .stats p { font-size: 1.5rem; margin: 5px 0; }
