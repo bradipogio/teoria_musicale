@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <!-- Meta viewport per il responsive design -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metronomo Interattivo</title>
+  <style>
+    /* Reset di base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    /* Layout base e responsive */
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #f0f4f7, #d9e2ec);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 20px;
+      
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+      text-align: center;
+    }
+    /* Contenitore dei controlli */
+    #controls {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      
+    }
+    label {
+      font-size: 16px;
+      color: #333;
+      align-items: center;
+      font-weight: bold;
+
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    select, button {
+      font-size: 16px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      align-items: center;
+      background: #a1caf5;
+
+    }
+    button {
+        display: flex;
+        justify-content: center;
+      background-color: #4CAF50;
+      color: white;
+      transition: background 0.2s;
+      transform: 0.2s;
+      align-items: center;
+
+    }
+    button:hover {
+      background-color: #45a049;
+      transform:scale(1.05)
+    }
+    /* Gruppo per i pulsanti: disposti in riga su schermi medi/piccoli */
+    .button-group {
+
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+
+    }
+    /* Contenitore per i battiti visuali */
+    #beatContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 500px;
+      background-color: #d2e2f3;
+      border: 50px;
+      border-radius: 50px;
+      height: 100%;
+    }
+    .beat {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #ccc;
+      transition: background 0.2s, transform 0.2s;
+      
+    }
+    .beat.active {
+      background: #4CAF50;
+      transform: scale(1.2);
+    }
+    .beat.accented.active {
+      background: #FF5722;
+    }
+    /* Responsive per schermi piccoli */
+    @media (max-width: 500px) {
+      .beat {
+        width: 40px;
+        height: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Metronomo</h1>
+  <div id="controls">
+    <div class="control-group">
+      <label for="bpmSlider">BPM: <span id="bpmDisplay">120</span></label>
+      <input type="range" id="bpmSlider" min="40" max="300" value="120">
+    </div>
+    <div class="control-group">
+      <label for="signatureSelect">Divizione Ritmica:</label>
+      <select id="signatureSelect">
+        <option value="4">4/4</option>
+        <option value="3">3/4</option>
+      </select>
+    </div>
+    <div class="control-group button-group">
+      <button id="startStop">Avvia</button>
+      <button id="tapTempo">Tap Tempo</button>
+    </div>
+  </div>
+  
+  <!-- Contenitore per la visualizzazione dei battiti -->
+  <div id="beatContainer">
+    <!-- I cerchietti verranno generati qui -->
+  </div>
+  
+  <script>
+    // Variabili di controllo
+    let isRunning = false;
+    let metronomeIntervalID = null;
+    let lastTap = 0;
+    let currentBeat = 0; // conteggio battiti (1-indexed)
+    let beatsPerMeasure = parseInt(document.getElementById('signatureSelect').value); // 4 o 3
+
+    // Riferimenti agli elementi HTML
+    const bpmSlider = document.getElementById("bpmSlider");
+    const bpmDisplay = document.getElementById("bpmDisplay");
+    const signatureSelect = document.getElementById("signatureSelect");
+    const startStopButton = document.getElementById("startStop");
+    const tapTempoButton = document.getElementById("tapTempo");
+    const beatContainer = document.getElementById("beatContainer");
+
+    // Creazione dell'AudioContext (richiede un gesto utente in alcuni browser)
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Funzione per generare un beep; se accent è true, viene usata una frequenza maggiore
+    function beep(accent) {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.type = "sine";
+      oscillator.frequency.value = accent ? 1200 : 1000;
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.start();
+      gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+      oscillator.stop(audioContext.currentTime + 0.1);
+    }
+
+    // Crea o aggiorna i cerchi dei battiti in base alla firma ritmica
+    function updateBeatVisuals() {
+      beatContainer.innerHTML = '';
+      for (let i = 0; i < beatsPerMeasure; i++) {
+        const beatDiv = document.createElement('div');
+        beatDiv.classList.add('beat');
+        beatDiv.setAttribute('data-beat', i);
+        beatContainer.appendChild(beatDiv);
+      }
+    }
+
+    // Evidenzia il battito attivo; il primo battito è considerato accentato
+    function updateActiveBeat() {
+      const beats = document.querySelectorAll('.beat');
+      beats.forEach((beat, index) => {
+        beat.classList.remove('active', 'accented');
+        if (index === (currentBeat - 1)) {
+          beat.classList.add('active');
+          if (currentBeat === 1) {
+            beat.classList.add('accented');
+          }
+        }
+      });
+    }
+
+    // Aggiorna l'intervallo del metronomo se in esecuzione
+    function updateMetronomeInterval() {
+      if (isRunning) {
+        clearInterval(metronomeIntervalID);
+        const bpm = parseInt(bpmSlider.value);
+        const interval = 60000 / bpm; // intervallo per ogni battito (quarter note)
+        metronomeIntervalID = setInterval(tick, interval);
+      }
+    }
+
+    // Funzione tick, eseguita ad ogni battito
+    function tick() {
+      currentBeat++;
+      if (currentBeat > beatsPerMeasure) {
+        currentBeat = 1;
+      }
+      if (currentBeat === 1) {
+        beep(true);
+      } else {
+        beep(false);
+      }
+      updateActiveBeat();
+    }
+
+    // Event listener per lo slider BPM
+    bpmSlider.addEventListener("input", function() {
+      bpmDisplay.textContent = bpmSlider.value;
+      updateMetronomeInterval();
+    });
+
+    // Cambio della firma ritmica
+    signatureSelect.addEventListener("change", function() {
+      beatsPerMeasure = parseInt(signatureSelect.value);
+      currentBeat = 0;
+      updateBeatVisuals();
+      updateMetronomeInterval();
+    });
+
+    // Pulsante Start/Stop
+    startStopButton.addEventListener("click", function() {
+      if (!isRunning) {
+        currentBeat = 0;
+        updateBeatVisuals();
+        const bpm = parseInt(bpmSlider.value);
+        const interval = 60000 / bpm;
+        metronomeIntervalID = setInterval(tick, interval);
+        startStopButton.textContent = "Ferma";
+        isRunning = true;
+      } else {
+        clearInterval(metronomeIntervalID);
+        startStopButton.textContent = "Avvia";
+        isRunning = false;
+        document.querySelectorAll('.beat').forEach(beat => {
+          beat.classList.remove('active', 'accented');
+        });
+      }
+    });
+
+    // Pulsante Tap Tempo: imposta il BPM in base all'intervallo tra i tap
+    tapTempoButton.addEventListener("click", function() {
+      const now = Date.now();
+      if (lastTap !== 0) {
+        const interval = now - lastTap;
+        let newBpm = Math.round(60000 / interval);
+        newBpm = Math.max(parseInt(bpmSlider.min), Math.min(newBpm, parseInt(bpmSlider.max)));
+        bpmSlider.value = newBpm;
+        bpmDisplay.textContent = newBpm;
+        updateMetronomeInterval();
+      }
+      lastTap = now;
+    });
+
+    // Inizializza la visualizzazione dei battiti all'avvio
+    updateBeatVisuals();
+  </script>
+</body>
+</html>
