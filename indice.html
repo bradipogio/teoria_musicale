@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="it">
-
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pagina con Link</title>
   <style>
@@ -19,15 +17,15 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh; /* Utilizzo min-height per consentire lo scrolling se necessario */
+      min-height: 100vh; /* Utilizzo di min-height per consentire lo scrolling se necessario */
       background-color: #f4f4f4;
     }
     .container {
       text-align: center;
     }
-    /* Raggruppo le sezioni e aggiungo spazio verticale tra di esse */
+    /* Raggruppo le sezioni e aggiungo spazio verticale */
     .section {
-      margin-bottom: 60px; /* Spazio di 40px tra le sezioni */
+      margin-bottom: 60px;
     }
     /* Disposizione verticale dei bottoni */
     .button-container {
@@ -62,55 +60,44 @@
   </style>
 </head>
 <body>
-
   <div class="container">
     <!-- Sezione Teoria -->
     <div class="section">
       <h1>Teoria</h1>
       <br>
-    
       <div class="button-container">
         <a href="#" class="button" id="link3">Generatore di Accordi</a>
         <a href="#" class="button" id="link9">Metronomo</a>
         <a href="#" class="button" id="link10">Spartiti Vuoti</a>
-
       </div>
     </div>
-
     <!-- Sezione Esercizi di Solfeggio -->
     <div class="section">
       <h1>Esercizi</h1>
       <br>
-            <div class="button-container">
+      <div class="button-container">
         <a href="#" class="button" id="link1">Note</a>
         <a href="#" class="button" id="link2">Durata</a>
       </div>
     </div>
+    <!-- Sezione Siti Interessanti -->
     <div class="section">
       <h1>Siti Interessanti</h1>
       <br>
-    
       <div class="button-container">
         <a href="#" class="button" id="link4">MidiCity</a>
       </div>
     </div>
-
   </div>
 
   <script>
-    // Aggiorno i link
+    // Imposto i link solo per gli elementi esistenti
     document.getElementById("link1").href = "https://bradipogio.github.io/teoria_musicale/solfeggio0.0.html";
     document.getElementById("link2").href = "https://bradipogio.github.io/teoria_musicale/solfeggio2.0.html";
     document.getElementById("link3").href = "https://bradipogio.github.io/teoria_musicale/accordi25.html";
     document.getElementById("link4").href = "https://midi.city";
-    document.getElementById("link5").href = "https://bradipogio.github.io/teoria_musicale/tab.pdf";
-    document.getElementById("link6").href = "https://bradipogio.github.io/teoria_musicale/violino.pdf";
-    document.getElementById("link7").href = "https://bradipogio.github.io/teoria_musicale/violino_basso.pdf";
-    document.getElementById("link8").href = "https://bradipogio.github.io/teoria_musicale/violino_tab.pdf";
     document.getElementById("link9").href = "https://bradipogio.github.io/teoria_musicale/metronomo.html";
     document.getElementById("link10").href = "https://bradipogio.github.io/teoria_musicale/spartiti_vuoti.html";
-
-</script>
-
+  </script>
 </body>
 </html>
