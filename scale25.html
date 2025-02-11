@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <!-- Importa Tone.js da un CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generatore di Scale</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    /* Pulsanti di controllo – usiamo lo stile "accidental-button" per il toggle radio */
+    .sound-button,
+    .chord-button,
+    .accidental-button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s;
+      min-width: 200px;
+      flex: 1 1 auto;
+      margin: 5px;
+    }
+    /* Stile per i toggle in stile radio (come il vecchio "# b") */
+    .accidental-button {
+      border-color: #007bff;
+      background: #007bff;
+      color: #fff;
+    }
+    .accidental-button.active {
+      border-color: #000;
+      background: #ffd700;
+      color: #000;
+      transform: scale(1.3);
+    }
+    .accidental-button:hover {
+      transform: scale(1.3);
+    }
+    /* Pulsanti per le scale e i gradi (stile "chord-button") */
+    .chord-button {
+      border-color: #007bff;
+      background: #007bff;
+      color: #fff;
+    }
+    .chord-button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+    .chord-button.active {
+      border-color: #000;
+      background: #ffd700;
+      color: #000;
+    }
+    /* Tastiera */
+    #keyboard {
+      position: relative;
+      width: 90%;
+      max-width: 700px;
+      margin: 20px auto;
+      user-select: none;
+    }
+    .white-key, .black-key {
+      position: absolute;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .white-key {
+      background: #fff;
+      border: 1px solid #000;
+    }
+    .white-key.active {
+      background: #ffd700;
+    }
+    .black-key {
+      background: #000;
+      border: 1px solid #000;
+      z-index: 2;
+      border-radius: 0 0 5px 5px;
+    }
+    .black-key.active {
+      background: #ffa500;
+    }
+    /* Evidenziazione delle note del CHORD:
+       ora il tasto viene quasi interamente colorato in verde trasparente */
+    .white-key.chord-highlight,
+    .black-key.chord-highlight {
+      background-color: rgba(50,205,50,0.7) !important;
+    }
+    .key-label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: #000;
+      pointer-events: none;
+    }
+    /* Informazioni sulla scala */
+    #scale-info {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: normal;
+    }
+    .info-line {
+      margin: 5px auto;
+      padding: 5px;
+      max-width: 700px;
+      font-weight: bold;
+      color: #000;
+    }
+    .chord-name { background-color: #e0f7fa; }
+    .degrees    { background-color: #ffe0b2; }
+    .semitones  { background-color: #e1bee7; }
+    /* Sezione per le info dell’accordo (stessa grafica delle info scala) */
+    #chord-info {
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: normal;
+    }
+    /* Layout */
+    .grid-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .home-button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: 10;
+      border-color: #007bff;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s;
+      min-width: 200px;
+      margin: 5px;
+    }
+    .home-button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+    @media only screen and (max-width: 600px) {
+      #keyboard { width: 100%; overflow-x: auto; }
+      .white-key, .black-key {
+        width: calc(100px / 7);
+        height: calc((100px / 7) * 5);
+      }
+      .key-label { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Generatore di Scale</h1>
+  </header>
+  <p>Clicca su una nota della tastiera per selezionare la <strong>nota fondamentale</strong> e poi scegli il tipo di scala.</p>
+  
+  <!-- Contenitore dei controlli: rimane solo il toggle per il suono dell'arpeggio -->
+  <div class="grid-container">
+    <div id="arpeggio-sound-toggle"></div>
+  </div>
+  
+  <!-- Tastiera -->
+  <div id="keyboard"></div>
+  
+  <!-- Bottoni per la scelta delle scale -->
+  <div id="scale-buttons">
+    <!-- Scale principali -->
+    <button class="chord-button" data-scale="major">Maggiore</button>
+    <button class="chord-button" data-scale="natural_minor">Minore Naturale</button>
+    <button class="chord-button" data-scale="harmonic_minor">Minore Armonica</button>
+    <button class="chord-button" data-scale="melodic_minor">Minore Melodica</button>
+    
+    <!-- Bottone per mostrare/nascondere le scale extra -->
+    <button id="toggle-extra-scales" class="chord-button">più Scale</button>
+    
+    <!-- Contenitore per le scale extra -->
+    <div id="extra-scale-buttons" style="display: none;">
+      <button class="chord-button" data-scale="major_pentatonic">Pentatonica Maggiore</button>
+      <button class="chord-button" data-scale="minor_pentatonic">Pentatonica Minore</button>
+      <button class="chord-button" data-scale="blues">Blues</button>
+      <button class="chord-button" data-scale="dorian">Dorio</button>
+      <button class="chord-button" data-scale="phrygian">Frigio</button>
+      <button class="chord-button" data-scale="lydian">Lidio</button>
+      <button class="chord-button" data-scale="mixolydian">Mixolidio</button>
+      <button class="chord-button" data-scale="locrian">Locrio</button>
+      <button class="chord-button" data-scale="Hungarian_minor">Minore Ungherese</button>
+      <button class="chord-button" data-scale="double_harmonic">Doppia Armonica</button>
+      <button class="chord-button" data-scale="whole_tone">Scala Totale</button>
+    </div>
+  </div>
+  
+  <!-- Informazioni sulla scala -->
+  <div id="scale-info"></div>
+  
+  <!-- Bottoni per i gradi (numeri romani) -->
+  <div id="degree-buttons" style="margin-top:20px;"></div>
+  
+  <!-- Informazioni sull'accordo -->
+  <div id="chord-info"></div>
+  
+  <script defer>
+    // Variabile globale per salvare l'array delle note della scala (già formattate in italiano, senza ottava)
+    let currentScaleNotesDisplay = [];
+    
+    document.addEventListener("DOMContentLoaded", function() {
+      /***********************
+       * Impostazioni globali
+       ***********************/
+      let preferSharps = true;
+      // Unico toggle: per il suono dell'arpeggio
+      let arpeggioSoundOn = true;     
+      let currentScaleType = "major";  // scala di default
+      let selectedRoot = "C4";
+      let keyElements = {};
+      // Variabile per il timeout per la rimozione del chord highlight
+      let chordHighlightTimeout = null;
+      
+      /***********************
+       * Formule, nomi e gradi delle scale
+       ***********************/
+      const scaleFormulas = {
+        "major":            [0, 2, 4, 5, 7, 9, 11, 12],
+        "natural_minor":    [0, 2, 3, 5, 7, 8, 10, 12],
+        "harmonic_minor":   [0, 2, 3, 5, 7, 8, 11, 12],
+        "melodic_minor":    [0, 2, 3, 5, 7, 9, 11, 12],
+        "major_pentatonic": [0, 2, 4, 7, 9, 12],
+        "minor_pentatonic": [0, 3, 5, 7, 10, 12],
+        "blues":            [0, 3, 5, 6, 7, 10, 12],
+        "dorian":           [0, 2, 3, 5, 7, 9, 10, 12],
+        "phrygian":         [0, 1, 3, 5, 7, 8, 10, 12],
+        "lydian":           [0, 2, 4, 6, 7, 9, 11, 12],
+        "mixolydian":       [0, 2, 4, 5, 7, 9, 10, 12],
+        "locrian":          [0, 1, 3, 5, 6, 8, 10, 12],
+        "Hungarian_minor":  [0, 2, 3, 6, 7, 8, 11, 12],
+        "double_harmonic":  [0, 1, 4, 5, 7, 8, 11, 12],
+        "whole_tone":       [0, 2, 4, 6, 8, 10, 12]
+      };
+      
+      const scaleNamesItalian = {
+        "major": "Maggiore",
+        "natural_minor": "Minore Naturale",
+        "harmonic_minor": "Minore Armonica",
+        "melodic_minor": "Minore Melodica",
+        "major_pentatonic": "Pentatonica Maggiore",
+        "minor_pentatonic": "Pentatonica Minore",
+        "blues": "Blues",
+        "dorian": "Dorio",
+        "phrygian": "Frigio",
+        "lydian": "Lidio",
+        "mixolydian": "Mixolidio",
+        "locrian": "Locrio",
+        "Hungarian_minor": "Minore Ungherese",
+        "double_harmonic": "Doppia Armonica",
+        "whole_tone": "Scala Totale"
+      };
+      
+      // Aggiornamento dei nomi dei gradi per le scale (in italiano, con le corrette qualità per le scale minori)
+      const scaleDegreeNames = {
+        "major":            ["prima", "seconda", "terza maggiore", "quarta", "quinta", "sesta maggiore", "settima maggiore", "ottava"],
+        "natural_minor":    ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta minore", "settima minore", "ottava"],
+        "harmonic_minor":   ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta minore", "settima maggiore", "ottava"],
+        "melodic_minor":    ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta maggiore", "settima maggiore", "ottava"],
+        "dorian":           ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta maggiore", "settima minore", "ottava"],
+        "phrygian":         ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta minore", "settima minore", "ottava"],
+        "lydian":           ["prima", "seconda", "terza maggiore", "quarta aumentata", "quinta", "sesta maggiore", "settima maggiore", "ottava"],
+        "mixolydian":       ["prima", "seconda", "terza maggiore", "quarta", "quinta", "sesta maggiore", "settima minore", "ottava"],
+        "locrian":          ["prima", "seconda", "terza minore", "quarta", "quinta diminuita", "sesta minore", "settima minore", "ottava"],
+        "major_pentatonic": ["prima", "seconda", "terza maggiore", "quinta", "sesta maggiore", "ottava"],
+        "minor_pentatonic": ["prima", "terza minore", "quarta", "quinta", "settima minore", "ottava"],
+        "blues":            ["prima", "terza minore", "quarta", "quinta", "settima minore", "ottava"],
+        "Hungarian_minor":  ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta minore", "settima maggiore", "ottava"],
+        "double_harmonic":  ["prima", "seconda", "terza minore", "quarta", "quinta", "sesta minore", "settima maggiore", "ottava"],
+        "whole_tone":       ["prima", "seconda", "terza maggiore", "quarta", "quinta", "sesta maggiore", "settima"]
+      };
+      
+      // Mappa per determinare la qualità del CHORD a partire dagli intervalli (in semitoni)
+      const chordQualityMap = {
+        "0,4,7": { name: "maggiore", degrees: ["prima", "terza maggiore", "quinta giusta"] },
+        "0,3,7": { name: "minore", degrees: ["prima", "terza minore", "quinta giusta"] },
+        "0,4,8": { name: "aumentato", degrees: ["prima", "terza maggiore", "quinta aumentata"] },
+        "0,3,6": { name: "diminuito", degrees: ["prima", "terza minore", "quinta diminuita"] }
+      };
+      
+      /***********************
+       * Nomenclatura corretta delle note (con doppi accidentali)
+       ***********************/
+      function convertToItalianNoteName(noteStr) {
+        const mapping = {
+          "A": "La",
+          "B": "Si",
+          "C": "Do",
+          "D": "Re",
+          "E": "Mi",
+          "F": "Fa",
+          "G": "Sol"
+        };
+        let letter = noteStr[0];
+        let accidental = noteStr.slice(1);
+        accidental = accidental.replace(/##/g, "𝄪").replace(/bb/g, "𝄫");
+        return mapping[letter] + accidental;
+      }
+      
+      // Gli array per la visualizzazione "classica"
+      const italianSharpNames = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+      const italianFlatNames  = ["Do","Reb","Re","Mib","Mi","Fa","Solb","Sol","Lab","La","Sib","Si"];
+      
+      function accidentalValue(acc) {
+        let value = 0;
+        for (let ch of acc) {
+          if(ch === "#") value++;
+          else if(ch === "b") value--;
+        }
+        return value;
+      }
+      
+      // Calcola il pitch (0–11) di una nota (es. "C", "D##", "Ebb", ecc.)
+      function getPitch(note) {
+        const naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let letter = note[0];
+        let acc = note.slice(1);
+        let base = naturalPitches[letter];
+        return ((base + accidentalValue(acc)) % 12 + 12) % 12;
+      }
+      
+      // Restituisce il pitch assoluto in semitoni di una nota con ottava (es. "C4")
+      function getAbsolutePitch(note) {
+        let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+        if(!m) return 0;
+        return parseInt(m[2]) * 12 + getPitch(m[1]);
+      }
+      
+      // Data una posizione assoluta (in semitoni) restituisce una nota in formato classico (es. "C4")
+      function noteFromAbsoluteClassical(abs) {
+        let octave = Math.floor(abs / 12);
+        let pitch = abs % 12;
+        const keyboardNames = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        return keyboardNames[pitch] + octave;
+      }
+      
+      // Funzione di spelling per le scale diatoniche (con eventuali doppi accidentali)
+      function spellNote(root, degree, semitoneOffset) {
+        let letters = ["A","B","C","D","E","F","G"];
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let rootLetter = root[0];
+        let rootAcc = root.slice(1);
+        let rootPitch = naturalPitches[rootLetter] + accidentalValue(rootAcc);
+        let targetPitch = (rootPitch + semitoneOffset) % 12;
+        if(targetPitch < 0) targetPitch += 12;
+        let rootIndex = letters.indexOf(rootLetter);
+        let expectedLetter = letters[(rootIndex + degree) % 7];
+        let expectedNatural = naturalPitches[expectedLetter];
+        let diff = targetPitch - expectedNatural;
+        if(diff > 6) diff -= 12;
+        if(diff < -6) diff += 12;
+        let accStr = "";
+        if(diff > 0) {
+          for (let i = 0; i < diff; i++) accStr += "#";
+        } else if(diff < 0) {
+          for (let i = 0; i < -diff; i++) accStr += "b";
+        }
+        return expectedLetter + accStr;
+      }
+      
+      // Per le scale diatoniche restituisce la nota in notazione italiana corretta
+      function spellScaleNoteItalian(root, degreeIndex, offset) {
+        return convertToItalianNoteName(spellNote(root, degreeIndex, offset));
+      }
+      
+      // Quando si visualizza una nota “classica” usiamo lo spelling corretto (oppure i flat se preferiti)
+      // (con parametro withOctave: false per non includere l’ottava)
+      function formatNote(note, useSharps, withOctave) {
+        let m = note.match(/^([A-G](?:#|b)*)(\d+)?$/);
+        if(m) {
+          let notePart = m[1];
+          let octave = m[2] || "";
+          if(useSharps) {
+            return convertToItalianNoteName(notePart) + (withOctave ? octave : "");
+          } else {
+            return italianFlatNames[getPitch(notePart)] + (withOctave ? octave : "");
+          }
+        }
+        return note;
+      }
+      
+      /***********************
+       * Setup del campione (pianoforte) con Tone.js
+       ***********************/
+      const piano = new Tone.Sampler({
+        urls: {
+          "C4": "C4.mp3",
+          "D#4": "Ds4.mp3",
+          "F#4": "Fs4.mp3",
+          "A4": "A4.mp3"
+        },
+        release: 1,
+        baseUrl: "https://tonejs.github.io/audio/salamander/"
+      }).toDestination();
+      
+      /***********************
+       * Setup del toggle per il suono dell'arpeggio (stile radio)
+       ***********************/
+      function setupArpeggioSoundToggle() {
+        const container = document.getElementById("arpeggio-sound-toggle");
+        container.innerHTML = `<button id="arpeggio-sound-button" class="accidental-button active">Arpeggio Sound: ON</button>`;
+        document.getElementById("arpeggio-sound-button").addEventListener("click", () => {
+          arpeggioSoundOn = !arpeggioSoundOn;
+          let btn = document.getElementById("arpeggio-sound-button");
+          if(arpeggioSoundOn) {
+            btn.textContent = "Arpeggio Sound: ON";
+            btn.classList.add("active");
+          } else {
+            btn.textContent = "Arpeggio Sound: OFF";
+            btn.classList.remove("active");
+          }
+          if(selectedRoot) generateScale();
+        });
+      }
+      
+      /***********************
+       * Funzione per rimuovere la classe "chord-highlight" da tutte le chiavi
+       ***********************/
+      function clearChordHighlights() {
+        Object.values(keyElements).forEach(el => el.classList.remove('chord-highlight'));
+      }
+      
+      /***********************
+       * Creazione della tastiera
+       ***********************/
+      const keyboard = document.getElementById('keyboard');
+      const totalWhiteKeys = 2 * 7;
+      const containerWidth = keyboard.clientWidth;
+      const whiteKeyWidth = containerWidth / totalWhiteKeys;
+      const whiteKeyHeight = whiteKeyWidth * 5;
+      const blackKeyWidth = whiteKeyWidth * 0.6;
+      const blackKeyHeight = whiteKeyHeight * 0.6;
+      keyboard.style.height = whiteKeyHeight + "px";
+      
+      const octaveNotes = [
+        { note: 'C', type: 'white' },
+        { note: 'C#', type: 'black' },
+        { note: 'D', type: 'white' },
+        { note: 'D#', type: 'black' },
+        { note: 'E', type: 'white' },
+        { note: 'F', type: 'white' },
+        { note: 'F#', type: 'black' },
+        { note: 'G', type: 'white' },
+        { note: 'G#', type: 'black' },
+        { note: 'A', type: 'white' },
+        { note: 'A#', type: 'black' },
+        { note: 'B', type: 'white' }
+      ];
+      
+      let whiteKeyCount = 0;
+      const startOctave = 4;
+      const numOctaves = 2;
+      for (let o = 0; o < numOctaves; o++) {
+        let octave = startOctave + o;
+        for (let i = 0; i < octaveNotes.length; i++) {
+          let noteObj = octaveNotes[i];
+          let fullNote = noteObj.note + octave;
+          if (noteObj.type === 'white') {
+            let key = document.createElement('div');
+            key.classList.add('white-key');
+            key.dataset.note = fullNote;
+            key.style.width = whiteKeyWidth + "px";
+            key.style.height = whiteKeyHeight + "px";
+            key.style.left = (whiteKeyCount * whiteKeyWidth) + "px";
+            let label = document.createElement('div');
+            label.classList.add('key-label');
+            label.textContent = formatNote(fullNote.replace(/\d+/,""), preferSharps, false);
+            key.appendChild(label);
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+            whiteKeyCount++;
+            key.addEventListener('click', () => {
+              clearChordHighlights();
+              clearSelection();
+              selectedRoot = fullNote;
+              key.classList.add('active');
+              generateScale();
+            });
+          } else if (noteObj.type === 'black') {
+            let key = document.createElement('div');
+            key.classList.add('black-key');
+            key.dataset.note = fullNote;
+            let offset = whiteKeyCount - 1;
+            key.style.width = blackKeyWidth + "px";
+            key.style.height = blackKeyHeight + "px";
+            key.style.left = (offset * whiteKeyWidth + whiteKeyWidth - (blackKeyWidth / 2)) + "px";
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+            key.addEventListener('click', (e) => {
+              e.stopPropagation();
+              clearChordHighlights();
+              clearSelection();
+              selectedRoot = fullNote;
+              key.classList.add('active');
+              generateScale();
+            });
+          }
+        }
+      }
+      
+      /***********************
+       * Gestione dei bottoni per la scelta della scala
+       ***********************/
+      const scaleButtons = document.querySelectorAll('#scale-buttons .chord-button');
+      scaleButtons.forEach(button => {
+        if(button.id !== "toggle-extra-scales") {
+          button.addEventListener('click', () => {
+            clearChordHighlights();
+            scaleButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            currentScaleType = button.dataset.scale;
+            if (selectedRoot) generateScale();
+          });
+        }
+      });
+      
+      // Toggle per mostrare/nascondere le scale extra
+      document.getElementById("toggle-extra-scales").addEventListener("click", function() {
+        const extraDiv = document.getElementById("extra-scale-buttons");
+        if (extraDiv.style.display === "none") {
+          extraDiv.style.display = "block";
+          this.textContent = "meno Scale";
+        } else {
+          extraDiv.style.display = "none";
+          this.textContent = "più Scale";
+        }
+      });
+      
+      /***********************
+       * Generazione della scala e dei bottoni per i gradi (numeri romani)
+       ***********************/
+      function generateScale() {
+        clearChordHighlights();
+        clearScaleHighlights();
+        let rootAbs = getAbsolutePitch(selectedRoot);
+        let offsets = scaleFormulas[currentScaleType];
+        
+        // Calcola le note "classiche" per la riproduzione (con ottava)
+        let scaleNotesClassical = offsets.map(offset => noteFromAbsoluteClassical(rootAbs + offset));
+        
+        // Per la visualizzazione usiamo lo spelling per le scale diatoniche
+        let scaleNotesDisplay;
+        if (["major","natural_minor","harmonic_minor","melodic_minor",
+             "dorian","phrygian","lydian","mixolydian","locrian"].includes(currentScaleType)) {
+          let offsetsForSpelling = (offsets[offsets.length-1] === 12)
+            ? offsets.slice(0, offsets.length-1)
+            : offsets;
+          let spelled = [];
+          for (let i = 0; i < offsetsForSpelling.length; i++) {
+            spelled.push(spellScaleNoteItalian(selectedRoot, i, offsetsForSpelling[i]));
+          }
+          scaleNotesDisplay = spelled;
+        } else {
+          let useSharpsForDisplay = preferSharps;
+          if (["minor_pentatonic","blues"].includes(currentScaleType)) {
+            useSharpsForDisplay = false;
+          }
+          scaleNotesDisplay = scaleNotesClassical.map(note => formatNote(note, useSharpsForDisplay, false));
+        }
+        
+        // Salvo le note della scala (senza ottava) in una variabile globale per il calcolo dei CHORD
+        currentScaleNotesDisplay = scaleNotesDisplay;
+        
+        let rootDisplay;
+        if (["major","natural_minor","harmonic_minor","melodic_minor",
+             "dorian","phrygian","lydian","mixolydian","locrian"].includes(currentScaleType)) {
+          rootDisplay = convertToItalianNoteName(selectedRoot.replace(/\d+/,""));
+        } else {
+          rootDisplay = formatNote(selectedRoot, preferSharps, false);
+        }
+                            
+        let line1 = "Scala " + rootDisplay + " " + scaleNamesItalian[currentScaleType] + ": " + scaleNotesDisplay.join(", ");
+        let line2 = "Gradi: " + (scaleDegreeNames[currentScaleType] ? scaleDegreeNames[currentScaleType].join(", ") : "");
+        let line3 = "Intervalli (semitoni): " + offsets.join(", ");
+        document.getElementById('scale-info').innerHTML =
+  '<div class="info-line chord-name">' + line1 + '</div>' +
+  '<div class="info-line degrees">' + line2 + '</div>' +
+  '<div class="info-line semitones">' + line3 + '</div>';
+
+        
+        // Riproduzione della scala in modalità arpeggiata (sempre attiva)
+        if(arpeggioSoundOn) {
+          Tone.start();
+          let now = Tone.now();
+          scaleNotesClassical.forEach((note, index) => {
+            piano.triggerAttackRelease(note, "8n", now + index * 0.3);
+          });
+        }
+        
+        // Evidenzia le note della scala sulla tastiera (aggiunge la classe "active")
+        scaleNotesClassical.forEach(note => {
+          if(keyElements[note]) { keyElements[note].classList.add('active'); }
+        });
+        
+        // Genera i bottoni per i gradi (numeri romani)
+        let degreeButtonsContainer = document.getElementById("degree-buttons");
+        degreeButtonsContainer.innerHTML = "";
+        let offsetsForDegrees = (offsets[offsets.length-1] === 12)
+          ? offsets.slice(0, offsets.length-1)
+          : offsets;
+        let romanNumerals = ["I", "II", "III", "IV", "V", "VI", "VII"];
+        for (let i = 0; i < offsetsForDegrees.length; i++) {
+          let btn = document.createElement("button");
+          btn.classList.add("chord-button");
+          btn.textContent = romanNumerals[i] || (i+1);
+          btn.style.margin = "5px";
+          btn.addEventListener("click", () => {
+            playDegreeChord(i);
+          });
+          degreeButtonsContainer.appendChild(btn);
+        }
+      }
+      
+      // Suona la triade (accordo) costruita sul grado selezionato, evidenziando tutte le note e generando info accordo
+      function playDegreeChord(degreeIndex) {
+        // Rimuovo subito ogni highlight precedente
+        clearChordHighlights();
+        if(chordHighlightTimeout !== null) {
+          clearTimeout(chordHighlightTimeout);
+          chordHighlightTimeout = null;
+        }
+        let offsetsFull = scaleFormulas[currentScaleType];
+        let baseOffsets = (offsetsFull[offsetsFull.length-1] === 12)
+                          ? offsetsFull.slice(0, offsetsFull.length - 1)
+                          : offsetsFull;
+        let n = baseOffsets.length;
+        let rootAbs = getAbsolutePitch(selectedRoot);
+        
+        // Calcola gli offset del CHORD (usando wrap-around per le scale diatoniche)
+        let chordOffsets = [];
+        chordOffsets.push(baseOffsets[degreeIndex]);
+        let secondIndex = degreeIndex + 2;
+        let secondOffset = (secondIndex < n) ? baseOffsets[secondIndex] : baseOffsets[secondIndex - n] + 12;
+        chordOffsets.push(secondOffset);
+        let thirdIndex = degreeIndex + 4;
+        let thirdOffset = (thirdIndex < n) ? baseOffsets[thirdIndex] : baseOffsets[thirdIndex - n] + 12;
+        chordOffsets.push(thirdOffset);
+        
+        // Calcola gli intervalli relativi al CHORD
+        let chordIntervals = chordOffsets.map(x => x - chordOffsets[0]);
+        chordIntervals.sort((a, b) => a - b);
+        let chordIntervalsStr = chordIntervals.join(",");
+        let chordQuality = chordQualityMap[chordIntervalsStr];
+        let chordName = chordQuality ? chordQuality.name : "";
+        let chordDegrees = chordQuality ? chordQuality.degrees.join(", ") : "";
+        
+        // Calcola le note del CHORD (con ottava) per la riproduzione
+        let chordNotesFull = chordOffsets.map(off => noteFromAbsoluteClassical(rootAbs + off));
+        // Per la visualizzazione dei nomi (senza ottava) riutilizziamo le note già calcolate per la scala se la scala è diatonica
+        let chordNotesItalian = [];
+        if(["major","natural_minor","harmonic_minor","melodic_minor",
+            "dorian","phrygian","lydian","mixolydian","locrian"].includes(currentScaleType) &&
+           currentScaleNotesDisplay.length >= 5) {
+          chordNotesItalian = [
+            currentScaleNotesDisplay[degreeIndex],
+            currentScaleNotesDisplay[(degreeIndex+2) % currentScaleNotesDisplay.length],
+            currentScaleNotesDisplay[(degreeIndex+4) % currentScaleNotesDisplay.length]
+          ];
+        } else {
+          // Altrimenti, converto le note del CHORD (rimuovendo l'ottava)
+          chordNotesItalian = chordNotesFull.map(note => formatNote(note.replace(/\d+/,""), preferSharps, false));
+        }
+        
+        Tone.start();
+        piano.triggerAttackRelease(chordNotesFull, "2n");
+        // Evidenzia tutte le note del CHORD sulla tastiera
+        chordNotesFull.forEach(note => {
+          if(keyElements[note]) {
+            keyElements[note].classList.add('chord-highlight');
+          }
+        });
+        let chordDisplay = "Accordo " + formatNote(chordNotesFull[0].replace(/\d+/,""), preferSharps, false) + " " + chordName + ": " + chordNotesItalian.join(", ");
+        document.getElementById('chord-info').innerHTML = `
+  <div class="info-line chord-name">${chordDisplay}</div>
+  <div class="info-line degrees">Gradi: ${chordDegrees}</div>
+  <div class="info-line semitones">Intervalli: ${chordIntervals.join(", ")}</div>
+`;
+
+        chordHighlightTimeout = setTimeout(() => {
+          clearChordHighlights();
+          chordHighlightTimeout = null;
+        }, 1000);
+      }
+      
+      function clearSelection() {
+        Object.values(keyElements).forEach(el => el.classList.remove('active'));
+        document.getElementById('scale-info').innerHTML = "";
+      }
+      
+      function clearScaleHighlights() {
+        Object.values(keyElements).forEach(el => el.classList.remove('active'));
+        if(selectedRoot && keyElements[selectedRoot]) {
+          keyElements[selectedRoot].classList.add('active');
+        }
+      }
+      
+      // Inizializza i controlli e la scala di default
+      setupArpeggioSoundToggle();
+      selectedRoot = "C4";
+      if(keyElements[selectedRoot]) { keyElements[selectedRoot].classList.add('active'); }
+      generateScale();
+    });
+  </script>
+</body>
+</html>
