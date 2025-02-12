@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allenamento Accordi</title>
+  
+  <!-- Include Tone.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
+  
+  <!-- Include Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+  
+  <style>
+    /* Stili generali e layout */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 10px;
+      padding: 0;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .home-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    .home-button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+    
+    /* Pannello di configurazione */
+    #config-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto 10px auto;
+      position: relative;
+    }
+    #config-panel h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+    #config-panel label,
+    #config-panel p {
+      font-size: 14px;
+      margin: 5px;
+    }
+    #player-name {
+      padding: 6px;
+      font-size: 14px;
+      border: 1px solid #007bff;
+      border-radius: 4px;
+    }
+    #view-leaderboard {
+      margin: 5px;
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #28a745;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    #view-leaderboard:hover {
+      background: #218838;
+      transform: scale(1.05);
+    }
+    /* Pulsanti toggle per la configurazione */
+    .toggle-btn {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: 2px solid #007bff;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      margin: 3px;
+      transition: background 0.3s, color 0.3s, transform 0.2s;
+    }
+    .toggle-btn:hover,
+    .toggle-btn.active {
+      transform: scale(1.1);
+    }
+    .toggle-btn.active {
+      background: #ffd700;
+      color: #000;
+    }
+    /* Pulsanti di gioco */
+    .game-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #ffd700;
+      color: #000;
+      cursor: pointer;
+      margin: 3px;
+      min-width: 130px;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    .game-button:hover {
+      transform: scale(1.05);
+    }
+    /* Pannello amministratore */
+    #admin-panel {
+      border: 1px solid #aaa;
+      padding: 8px;
+      border-radius: 6px;
+      max-width: 600px;
+      margin: 5px auto;
+      display: none;
+      background: #f9f9f9;
+    }
+    #admin-panel h3 {
+      margin-top: 0;
+      font-size: 16px;
+    }
+    #admin-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #admin-panel th,
+    #admin-panel td {
+      border: 1px solid #777;
+      padding: 4px;
+      text-align: center;
+      font-size: 13px;
+    }
+    #admin-panel button {
+      margin: 2px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    /* Bottone Bonus */
+    #bonus-indicator {
+      display: inline-block;
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #ccc;
+      color: #000;
+      margin: 3px;
+      min-width: 130px;
+    }
+    @keyframes bonusPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .bonus-active {
+      background-color: red !important;
+      color: #fff !important;
+      animation: bonusPulse 0.5s infinite;
+    }
+    /* Timer */
+    @keyframes blinkRed {
+      0% { background-color: #007bff; }
+      50% { background-color: red; }
+      100% { background-color: #007bff; }
+    }
+    .time-warning {
+      animation: blinkRed 1s infinite;
+    }
+    /* Pannello di gioco */
+    #game-panel {
+      display: none;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto 10px auto;
+    }
+    #game-controls {
+      margin-bottom: 10px;
+    }
+    #scoreboard {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    #timer-container {
+      width: 100%;
+      max-width: 600px;
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      margin: 5px auto;
+      overflow: hidden;
+    }
+    #timer-bar {
+      height: 100%;
+      width: 100%;
+      background: #007bff;
+    }
+    /* Bottoni per le risposte: ora sono normali button con sfondo giallo e testo nero.
+       NOTA: rimosso l'effetto hover per l'ingrandimento. */
+    .chord-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #ffd700;
+      color: #000;
+      cursor: pointer;
+      margin: 3px;
+      min-width: 130px;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    /* Rimuoviamo l'effetto hover: non si ingrandiscono quando il mouse passa sopra */
+    /* .chord-button:hover { transform: scale(1.1); } */
+    
+    /* Flash al click: solo al click i bottoni flashano */
+    .flash-correct {
+      background: #28a745 !important;
+      transform: scale(1.1) !important;
+    }
+    .flash-wrong {
+      background: #dc3545 !important;
+      transform: scale(1.1) !important;
+    }
+    
+    /* Area feedback */
+    #chord-info {
+      margin-top: 5px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #000;
+      min-height: 30px;
+    }
+    
+    /* Tastiera */
+    #keyboard {
+      position: relative;
+      width: 90%;
+      max-width: 600px;
+      margin: 10px auto;
+      user-select: none;
+    }
+    .white-key, .black-key {
+      position: absolute;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .white-key {
+      background: #fff;
+      border: 1px solid #000;
+    }
+    .white-key.active {
+      background: #ffd700;
+    }
+    .black-key {
+      background: #000;
+      border: 1px solid #000;
+      z-index: 2;
+      border-radius: 0 0 5px 5px;
+    }
+    .black-key.active {
+      background: #ffa500;
+    }
+    .key-label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: #000;
+      pointer-events: none;
+    }
+    
+    /* Leaderboard */
+    #leaderboard-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 10px auto;
+      background: linear-gradient(135deg, #f1f1f1, #e9e9e9);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: none;
+    }
+    #leaderboard-panel h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    #leaderboard-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #leaderboard-panel th,
+    #leaderboard-panel td {
+      padding: 6px;
+      border: 1px solid #888;
+      font-size: 14px;
+    }
+    #leaderboard-panel tr:nth-child(even) {
+      background: #e9e9e9;
+    }
+    #leaderboard-panel tr.highlight {
+      background: yellow !important;
+    }
+    
+    /* Bottone admin (*) */
+    #admin-btn {
+      font-size: 12px;
+      padding: 4px 6px;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+  </style>
+  
+  <!-- Firebase Initialization -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB9TrMyxcJYd4kQ3YJtHy0lz_tgCO-_CX8",
+      authDomain: "allenamentoaccordi.firebaseapp.com",
+      projectId: "allenamentoaccordi",
+      storageBucket: "allenamentoaccordi.firebasestorage.app",
+      messagingSenderId: "53013553677",
+      appId: "1:53013553677:web:7985a84a245aef5894eb44"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+  
+</head>
+<body>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Allenamento Accordi</h1>
+  </header>
+  
+  <!-- Pannello di configurazione -->
+  <div id="config-panel">
+    <h2>Impostazioni Di Gioco</h2>
+    <div id="player-info">
+      <label>Nome Giocatore:
+        <input type="text" id="player-name" placeholder="Inserisci il tuo nome" value="Giocatore">
+      </label>
+    </div>
+    <div id="chord-selection">
+      <p>Seleziona i tipi di accordi su cui allenarti:</p>
+      <!-- I pulsanti toggle per la selezione degli accordi; i primi due sono attivi di default -->
+      <button type="button" class="toggle-btn active" data-chord="">Maggiore</button>
+      <button type="button" class="toggle-btn active" data-chord="m">Minore</button>
+      <button type="button" class="toggle-btn" data-chord="7">7</button>
+      <button type="button" class="toggle-btn" data-chord="maj7">maj7</button>
+      <button type="button" class="toggle-btn" data-chord="m(maj7)">min‑maj7</button>
+      <button type="button" class="toggle-btn" data-chord="aug">Aumentato</button>
+      <button type="button" class="toggle-btn" data-chord="dim">Diminuito</button>
+      <!-- Nuove tipologie sus2 e sus4 -->
+      <button type="button" class="toggle-btn" data-chord="sus2">sus2</button>
+      <button type="button" class="toggle-btn" data-chord="sus4">sus4</button>
+    </div>
+    <div id="keyboard-option">
+      <label>
+        <input type="checkbox" id="toggle-keyboard" checked> Mostra tastiera
+      </label>
+    </div>
+    <button id="start-game" class="game-button">Inizia Gioco</button>
+    <button id="view-leaderboard" class="game-button">Visualizza Classifica</button>
+    <button id="admin-btn" class="game-button">*</button>
+    
+    <div id="admin-panel">
+      <h3>Modifica Classifica</h3>
+      <div id="admin-leaderboard"></div>
+      <button id="clear-leaderboard" class="game-button">Cancella Tutti i Punteggi</button>
+      <button id="close-admin" class="game-button">Chiudi Admin</button>
+    </div>
+  </div>
+  
+  <!-- Pannello di gioco -->
+  <div id="game-panel">
+    <div id="game-controls">
+      <button id="end-game" class="game-button">Termina Gioco</button>
+      <button id="replay-chord" class="game-button">Riascolta Accordo</button>
+      <div id="scoreboard">Punteggio: 0</div>
+      <div id="timer-container">
+        <div id="timer-bar"></div>
+      </div>
+      <button id="bonus-indicator" class="game-button">Bonus</button>
+    </div>
+    <div id="chord-buttons"></div>
+    <div id="chord-info"></div>
+    <div id="keyboard"></div>
+  </div>
+  
+  <!-- Pannello classifica -->
+  <div id="leaderboard-panel">
+    <h2>Classifica</h2>
+    <div id="leaderboard-content"></div>
+    <button id="close-leaderboard" class="game-button">Chiudi Classifica</button>
+  </div>
+  
+  <!-- Tutto il codice JavaScript in un'unica IIFE per evitare duplicazioni -->
+  <script>
+    (function() {
+      // Variabili globali
+      let gameActive = false;
+      let score = 0;
+      let currentChordType = "";
+      let selectedRoot = "";
+      let allowedChordTypes = [];
+      const allowedRootNotes = ["C4","C#4","D4","D#4","E4","F4","F#4","G4","G#4","A4","A#4","B4"];
+      const soundOn = true;
+      const defaultUseSharps = true;
+      const FIXED_DURATION = 60000; // 60 secondi
+      let globalTimerInterval;
+      let gameEndTime;
+      let consecutiveCorrect = 0;
+      let lastChordNotes = []; // Note per il replay come arpeggio
+      const bonusIndicator = document.getElementById('bonus-indicator');
+      let updateLeaderboardFlag = true;
+      let displayedScore = 0;  // Variabile per l'animazione del punteggio
+      
+      // Aggiorna la leaderboard su Firestore
+      async function updateLeaderboard(name, score) {
+        try {
+          await db.collection("leaderboard").add({
+            name: name,
+            score: score,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (e) {
+          console.error("Errore aggiornando la leaderboard:", e);
+        }
+      }
+      
+      async function getLeaderboardData() {
+        let leaderboard = [];
+        try {
+          const querySnapshot = await db.collection("leaderboard").orderBy("score", "desc").get();
+          querySnapshot.forEach((doc) => {
+            let data = doc.data();
+            data.id = doc.id;
+            leaderboard.push(data);
+          });
+        } catch (e) {
+          console.error("Errore leggendo la leaderboard:", e);
+        }
+        return leaderboard;
+      }
+      
+      async function renderLeaderboard() {
+        let leaderboard = await getLeaderboardData();
+        let content = "<table>";
+        content += "<tr><th>Rank</th><th>Nome</th><th>Punteggio</th><th>Azioni</th></tr>";
+        leaderboard.forEach((entry, index) => {
+          content += `<tr data-id="${entry.id}"><td>${index+1}</td><td>${entry.name}</td><td>${entry.score}</td>
+                      <td><button class="admin-delete" data-id="${entry.id}">Elimina</button></td></tr>`;
+        });
+        content += "</table>";
+        return content;
+      }
+      
+      async function showLeaderboard(playerName, playerScore) {
+        let leaderboard = await getLeaderboardData();
+        let content = "<table>";
+        content += "<tr><th>Rank</th><th>Nome</th><th>Punteggio</th></tr>";
+        leaderboard.forEach((entry, index) => {
+          let highlight = (entry.name === playerName && entry.score === playerScore) ? "highlight" : "";
+          content += `<tr class="${highlight}"><td>${index+1}</td><td>${entry.name}</td><td>${entry.score}</td></tr>`;
+        });
+        content += "</table>";
+        document.getElementById("leaderboard-content").innerHTML = content;
+        document.getElementById("leaderboard-panel").style.display = "block";
+      }
+      
+      // Eliminazione entry in admin mode
+      document.addEventListener("click", async function(e) {
+        if (e.target && e.target.classList.contains("admin-delete")) {
+          let docId = e.target.getAttribute("data-id");
+          try {
+            await db.collection("leaderboard").doc(docId).delete();
+            document.getElementById("admin-leaderboard").innerHTML = await renderLeaderboard();
+          } catch (err) {
+            console.error("Errore eliminando l'entry:", err);
+          }
+        }
+      });
+      
+      // Modalità Admin
+      const adminBtn = document.getElementById("admin-btn");
+      const adminPanel = document.getElementById("admin-panel");
+      adminBtn.addEventListener("click", function() {
+        let pwd = prompt("Inserisci la password admin:");
+        if (pwd === "admin123") {
+          adminPanel.style.display = "block";
+          renderLeaderboard().then(content => {
+            document.getElementById("admin-leaderboard").innerHTML = content;
+          });
+        } else {
+          alert("Password errata!");
+        }
+      });
+      
+      document.getElementById("clear-leaderboard").addEventListener("click", async function() {
+        if (confirm("Sei sicuro di voler cancellare tutta la classifica?")) {
+          let leaderboard = await getLeaderboardData();
+          leaderboard.forEach(async (entry) => {
+            await db.collection("leaderboard").doc(entry.id).delete();
+          });
+          document.getElementById("admin-leaderboard").innerHTML = await renderLeaderboard();
+        }
+      });
+      
+      document.getElementById("close-admin").addEventListener("click", function() {
+        adminPanel.style.display = "none";
+      });
+      
+      // Pulsante per visualizzare la classifica
+      document.getElementById("view-leaderboard").addEventListener("click", function() {
+        let playerName = document.getElementById("player-name").value.trim() || "Anonimo";
+        showLeaderboard(playerName, 0);
+      });
+      
+      // Toggle per la selezione degli accordi (configurazione)
+      const toggleButtons = document.querySelectorAll('.toggle-btn');
+      toggleButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.classList.toggle('active');
+        });
+      });
+      
+      // Funzioni helper per accordi e note
+      function accidentalValue(acc) {
+        let value = 0;
+        for (let ch of acc) {
+          if (ch === "#") value++;
+          else if (ch === "b") value--;
+        }
+        return value;
+      }
+      function getPitch(note) {
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let letter = note[0], acc = note.slice(1);
+        let base = naturalPitches[letter];
+        return ((base + accidentalValue(acc)) % 12 + 12) % 12;
+      }
+      const italianSharpNames = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+      const italianFlatNames  = ["Do","Reb","Re","Mib","Mi","Fa","Solb","Sol","Lab","La","Sib","Si"];
+      function formatNote(note, useSharps, withOctave) {
+        let m = note.match(/^([A-G](?:#|b)*)(\d+)?$/);
+        if (m) {
+          let notePart = m[1], octave = m[2] || "";
+          return useSharps ? convertToItalianNoteName(notePart) + (withOctave ? octave : "") : italianFlatNames[getPitch(notePart)] + (withOctave ? octave : "");
+        }
+        return note;
+      }
+      function convertToItalianNoteName(noteStr) {
+        const mapping = { "A": "La", "B": "Si", "C": "Do", "D": "Re", "E": "Mi", "F": "Fa", "G": "Sol" };
+        let letter = noteStr[0], accidental = noteStr.slice(1);
+        return mapping[letter] + accidental;
+      }
+      function classicalToKeyboard(note) {
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let letter = note[0], acc = note.slice(1);
+        let pitch = naturalPitches[letter] + accidentalValue(acc);
+        pitch = ((pitch % 12) + 12) % 12;
+        const keyboardNames = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+        return keyboardNames[pitch];
+      }
+      function spellNote(root, degree, semitoneOffset) {
+        let letters = ["A","B","C","D","E","F","G"];
+        let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
+        let rootLetter = root[0], rootAcc = root.slice(1);
+        let rootPitch = naturalPitches[rootLetter] + accidentalValue(rootAcc);
+        let targetPitch = (rootPitch + semitoneOffset) % 12;
+        if (targetPitch < 0) targetPitch += 12;
+        let rootIndex = letters.indexOf(rootLetter);
+        let expectedLetter = letters[(rootIndex + degree) % 7],
+            expectedNatural = naturalPitches[expectedLetter],
+            diff = targetPitch - expectedNatural;
+        if (diff > 6) diff -= 12;
+        if (diff < -6) diff += 12;
+        let accStr = "";
+        if (diff > 0) {
+          for (let i = 0; i < diff; i++) accStr += "#";
+        } else if (diff < 0) {
+          for (let i = 0; i < -diff; i++) accStr += "b";
+        }
+        return expectedLetter + accStr;
+      }
+      function assignChordOctaves(chordNotes, baseOctave, rootNote) {
+        let assigned = [];
+        let rootPitch = getPitch(rootNote);
+        let prevAbs = baseOctave * 12 + rootPitch;
+        assigned.push(rootNote + baseOctave);
+        for (let i = 1; i < chordNotes.length; i++) {
+          let note = chordNotes[i], octave = baseOctave;
+          while ((octave * 12 + getPitch(note)) <= prevAbs) {
+            octave++;
+          }
+          let abs = octave * 12 + getPitch(note);
+          assigned.push(note + octave);
+          prevAbs = abs;
+        }
+        return assigned;
+      }
+      
+      // Formule degli accordi (aggiunte sus2 e sus4)
+      const chordFormulas = {
+        "":        [ {degree:0, semitones:0}, {degree:2, semitones:4}, {degree:4, semitones:7} ],
+        "m":       [ {degree:0, semitones:0}, {degree:2, semitones:3}, {degree:4, semitones:7} ],
+        "7":       [ {degree:0, semitones:0}, {degree:2, semitones:4}, {degree:4, semitones:7}, {degree:6, semitones:10} ],
+        "maj7":    [ {degree:0, semitones:0}, {degree:2, semitones:4}, {degree:4, semitones:7}, {degree:6, semitones:11} ],
+        "m(maj7)": [ {degree:0, semitones:0}, {degree:2, semitones:3}, {degree:4, semitones:7}, {degree:6, semitones:11} ],
+        "aug":     [ {degree:0, semitones:0}, {degree:2, semitones:4}, {degree:4, semitones:8} ],
+        "dim":     [ {degree:0, semitones:0}, {degree:2, semitones:3}, {degree:4, semitones:6} ],
+        "sus2":    [ {degree:0, semitones:0}, {degree:1, semitones:2}, {degree:4, semitones:7} ],
+        "sus4":    [ {degree:0, semitones:0}, {degree:3, semitones:5}, {degree:4, semitones:7} ]
+      };
+      
+      const chordNamesItalian = {
+        "": "maggiore",
+        "m": "minore",
+        "7": "7",
+        "maj7": "maj7",
+        "m(maj7)": "min‑maj7",
+        "aug": "aumentato",
+        "dim": "diminuito",
+        "sus2": "sus2",
+        "sus4": "sus4"
+      };
+      
+      // Campionatore di pianoforte
+      const piano = new Tone.Sampler({
+        urls: {
+          "C4": "C4.mp3",
+          "D#4": "Ds4.mp3",
+          "F#4": "Fs4.mp3",
+          "A4": "A4.mp3"
+        },
+        release: 1,
+        baseUrl: "https://tonejs.github.io/audio/salamander/"
+      }).toDestination();
+      
+      // Costruzione della tastiera
+      const keyElements = {};
+      const keyboard = document.getElementById('keyboard');
+      const totalWhiteKeys = 14;
+      const containerWidth = keyboard.clientWidth || 600;
+      const whiteKeyWidth = containerWidth / totalWhiteKeys;
+      const whiteKeyHeight = whiteKeyWidth * 5;
+      const blackKeyWidth = whiteKeyWidth * 0.6;
+      const blackKeyHeight = whiteKeyHeight * 0.6;
+      keyboard.style.height = whiteKeyHeight + "px";
+      const octaveNotes = [
+        { note:'C', type:'white' }, { note:'C#', type:'black' },
+        { note:'D', type:'white' }, { note:'D#', type:'black' },
+        { note:'E', type:'white' }, { note:'F', type:'white' },
+        { note:'F#', type:'black' }, { note:'G', type:'white' },
+        { note:'G#', type:'black' }, { note:'A', type:'white' },
+        { note:'A#', type:'black' }, { note:'B', type:'white' }
+      ];
+      let whiteKeyCount = 0;
+      const startOctave = 4;
+      const numOctaves = 2;
+      for (let o = 0; o < numOctaves; o++) {
+        let octave = startOctave + o;
+        for (let i = 0; i < octaveNotes.length; i++) {
+          let noteObj = octaveNotes[i];
+          let fullNote = noteObj.note + octave;
+          if (noteObj.type === 'white') {
+            let key = document.createElement('div');
+            key.classList.add('white-key');
+            key.dataset.note = fullNote;
+            key.style.width = whiteKeyWidth + "px";
+            key.style.height = whiteKeyHeight + "px";
+            key.style.left = (whiteKeyCount * whiteKeyWidth) + "px";
+            let label = document.createElement('div');
+            label.classList.add('key-label');
+            label.textContent = formatNote(fullNote.replace(/\d+/,""), defaultUseSharps, false);
+            key.appendChild(label);
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+            whiteKeyCount++;
+          } else if (noteObj.type === 'black') {
+            let key = document.createElement('div');
+            key.classList.add('black-key');
+            key.dataset.note = fullNote;
+            let offset = whiteKeyCount - 1;
+            key.style.width = blackKeyWidth + "px";
+            key.style.height = blackKeyHeight + "px";
+            key.style.left = (offset * whiteKeyWidth + whiteKeyWidth - (blackKeyWidth / 2)) + "px";
+            keyboard.appendChild(key);
+            keyElements[fullNote] = key;
+          }
+        }
+      }
+      function clearKeyboardSelection() {
+        Object.values(keyElements).forEach(el => el.classList.remove('active'));
+      }
+      
+      // Animazione del punteggio
+      function animateScore(finalScore) {
+        let start = displayedScore;
+        let change = finalScore - start;
+        let duration = 1000; // 1 secondo
+        let startTime = null;
+        function animate(timestamp) {
+          if (!startTime) startTime = timestamp;
+          let progress = timestamp - startTime;
+          let currentValue = Math.round(start + (change * progress / duration));
+          document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+          if (progress < duration) {
+            requestAnimationFrame(animate);
+          } else {
+            document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+            displayedScore = finalScore;
+            setTimeout(() => {
+              document.getElementById("scoreboard").style.color = "black";
+            }, 500);
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+      // Timer globale (60 secondi)
+      function startGlobalTimer(durationMs) {
+        const timerBar = document.getElementById('timer-bar');
+        timerBar.style.width = "100%";
+        gameEndTime = Date.now() + durationMs;
+        globalTimerInterval = setInterval(() => {
+          let remaining = gameEndTime - Date.now();
+          let percent = remaining / durationMs;
+          if (percent < 0) percent = 0;
+          timerBar.style.width = (percent * 100) + "%";
+          if (remaining <= 15000) {
+            timerBar.classList.add("time-warning");
+          } else {
+            timerBar.classList.remove("time-warning");
+          }
+          console.log("Tempo rimanente: ", remaining);
+          if (remaining <= 0) {
+            console.log("Timer scaduto: termina il gioco");
+            clearInterval(globalTimerInterval);
+            updateLeaderboardFlag = true;
+            endGameDueToTime();
+          }
+        }, 50);
+      }
+      
+      function endGameDueToTime() {
+        gameActive = false;
+        document.getElementById('chord-info').innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      }
+      
+      // Funzioni di gioco
+      function generateRandomChord() {
+        clearKeyboardSelection();
+        document.getElementById('chord-info').innerHTML = "";
+        selectedRoot = allowedRootNotes[Math.floor(Math.random() * allowedRootNotes.length)];
+        currentChordType = allowedChordTypes[Math.floor(Math.random() * allowedChordTypes.length)];
+        playCurrentChord();
+      }
+      
+      function playCurrentChord() {
+        clearKeyboardSelection();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (m) {
+            let notePart = m[1], octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        lastChordNotes = notesForPlayback;
+        if (soundOn) {
+          Tone.start();
+          piano.triggerAttackRelease(notesForPlayback, "2n");
+        }
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (match) {
+            let notePart = match[1], octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
+          }
+        });
+      }
+      
+      // Riproduce l'accordo come arpeggio (200 ms di ritardo)
+      function playArpeggio(notes) {
+        notes.forEach((note, i) => {
+          setTimeout(() => {
+            piano.triggerAttackRelease(note, "8n");
+          }, i * 200);
+        });
+      }
+      
+      // Gestione delle risposte
+      function processAnswer(isCorrect, message) {
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        if (isCorrect) {
+          consecutiveCorrect++;
+          let basePoints = allowedChordTypes.length * 50;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(200 * Math.pow(1.05, consecutiveCorrect - 3)) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById('chord-info').innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+          document.getElementById("scoreboard").style.color = "green";
+          if (consecutiveCorrect >= 3) {
+            bonusIndicator.classList.add('bonus-active');
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else {
+            bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.textContent = "Bonus";
+          }
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomChord();
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+          }, 150);
+          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        } else {
+          let penalty = Math.floor(score / 3);
+          score = score - penalty;
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
+          document.getElementById("scoreboard").style.color = "red";
+          animateScore(score);
+          setTimeout(() => {
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+          }, 150);
+        }
+      }
+      
+      function generaBottoniRisposta() {
+        const container = document.getElementById('chord-buttons');
+        container.innerHTML = "";
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            let tipo = opzione.getAttribute('data-chord');
+            let btn = document.createElement('button');
+            btn.classList.add('chord-button');
+            btn.dataset.chord = tipo;
+            btn.textContent = chordNamesItalian[tipo] || tipo;
+            btn.addEventListener('click', function() {
+              if (!gameActive) return;
+              if (this.dataset.chord === currentChordType) {
+                this.classList.add('flash-correct');
+                setTimeout(() => { this.classList.remove('flash-correct'); }, 300);
+                processAnswer(true, "Corretto!");
+              } else {
+                this.classList.add('flash-wrong');
+                setTimeout(() => { this.classList.remove('flash-wrong'); }, 300);
+                processAnswer(false, "Sbagliato! Riprova");
+              }
+            });
+            container.appendChild(btn);
+          }
+        });
+      }
+      
+      // Controlli di gioco
+      document.getElementById('end-game').addEventListener('click', () => {
+        gameActive = false;
+        clearInterval(globalTimerInterval);
+        updateLeaderboardFlag = false;
+        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      });
+      
+      document.getElementById('replay-chord').addEventListener('click', () => {
+        if (gameActive && lastChordNotes.length > 0) {
+          playArpeggio(lastChordNotes);
+        }
+      });
+      
+      async function finishGame() {
+        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        if (updateLeaderboardFlag) {
+          await updateLeaderboard(playerName, score);
+        }
+        document.getElementById('game-panel').style.display = "none";
+        showLeaderboard(playerName, score);
+      }
+      
+      document.getElementById('close-leaderboard').addEventListener('click', () => {
+        document.getElementById('leaderboard-panel').style.display = "none";
+        document.getElementById('config-panel').style.display = "block";
+      });
+      
+      // Nascondi il pannello di gioco all'avvio
+      document.getElementById('game-panel').style.display = "none";
+      
+      // Animazione del punteggio
+      function animateScore(finalScore) {
+        let start = displayedScore;
+        let change = finalScore - start;
+        let duration = 1000; // 1 secondo
+        let startTime = null;
+        function animate(timestamp) {
+          if (!startTime) startTime = timestamp;
+          let progress = timestamp - startTime;
+          let currentValue = Math.round(start + (change * progress / duration));
+          document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+          if (progress < duration) {
+            requestAnimationFrame(animate);
+          } else {
+            document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+            displayedScore = finalScore;
+            setTimeout(() => {
+              document.getElementById("scoreboard").style.color = "black";
+            }, 500);
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+      // Timer globale (60 secondi)
+      function startGlobalTimer(durationMs) {
+        const timerBar = document.getElementById('timer-bar');
+        timerBar.style.width = "100%";
+        gameEndTime = Date.now() + durationMs;
+        globalTimerInterval = setInterval(() => {
+          let remaining = gameEndTime - Date.now();
+          let percent = remaining / durationMs;
+          if (percent < 0) percent = 0;
+          timerBar.style.width = (percent * 100) + "%";
+          if (remaining <= 15000) {
+            timerBar.classList.add("time-warning");
+          } else {
+            timerBar.classList.remove("time-warning");
+          }
+          console.log("Tempo rimanente: ", remaining);
+          if (remaining <= 0) {
+            console.log("Timer scaduto: termina il gioco");
+            clearInterval(globalTimerInterval);
+            updateLeaderboardFlag = true;
+            endGameDueToTime();
+          }
+        }, 50);
+      }
+      
+      function endGameDueToTime() {
+        gameActive = false;
+        document.getElementById('chord-info').innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      }
+      
+      // Funzioni di gioco
+      function generateRandomChord() {
+        clearKeyboardSelection();
+        document.getElementById('chord-info').innerHTML = "";
+        selectedRoot = allowedRootNotes[Math.floor(Math.random() * allowedRootNotes.length)];
+        currentChordType = allowedChordTypes[Math.floor(Math.random() * allowedChordTypes.length)];
+        playCurrentChord();
+      }
+      
+      function playCurrentChord() {
+        clearKeyboardSelection();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (m) {
+            let notePart = m[1], octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        lastChordNotes = notesForPlayback;
+        if (soundOn) {
+          Tone.start();
+          piano.triggerAttackRelease(notesForPlayback, "2n");
+        }
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (match) {
+            let notePart = match[1], octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
+          }
+        });
+      }
+      
+      // Riproduce l'accordo come arpeggio (200 ms di ritardo)
+      function playArpeggio(notes) {
+        notes.forEach((note, i) => {
+          setTimeout(() => {
+            piano.triggerAttackRelease(note, "8n");
+          }, i * 200);
+        });
+      }
+      
+      // Gestione delle risposte
+      function processAnswer(isCorrect, message) {
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        if (isCorrect) {
+          consecutiveCorrect++;
+          let basePoints = allowedChordTypes.length * 50;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(200 * Math.pow(1.05, consecutiveCorrect - 3)) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById('chord-info').innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+          document.getElementById("scoreboard").style.color = "green";
+          if (consecutiveCorrect >= 3) {
+            bonusIndicator.classList.add('bonus-active');
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else {
+            bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.textContent = "Bonus";
+          }
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomChord();
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+          }, 150);
+          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        } else {
+          let penalty = Math.floor(score / 3);
+          score = score - penalty;
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
+          document.getElementById("scoreboard").style.color = "red";
+          animateScore(score);
+          setTimeout(() => {
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+          }, 150);
+        }
+      }
+      
+      function generaBottoniRisposta() {
+        const container = document.getElementById('chord-buttons');
+        container.innerHTML = "";
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            let tipo = opzione.getAttribute('data-chord');
+            let btn = document.createElement('button');
+            btn.classList.add('chord-button');
+            btn.dataset.chord = tipo;
+            btn.textContent = chordNamesItalian[tipo] || tipo;
+            btn.addEventListener('click', function() {
+              if (!gameActive) return;
+              if (this.dataset.chord === currentChordType) {
+                this.classList.add('flash-correct');
+                setTimeout(() => { this.classList.remove('flash-correct'); }, 300);
+                processAnswer(true, "Corretto!");
+              } else {
+                this.classList.add('flash-wrong');
+                setTimeout(() => { this.classList.remove('flash-wrong'); }, 300);
+                processAnswer(false, "Sbagliato! Riprova");
+              }
+            });
+            container.appendChild(btn);
+          }
+        });
+      }
+      
+      // Controlli di gioco
+      document.getElementById('end-game').addEventListener('click', () => {
+        gameActive = false;
+        clearInterval(globalTimerInterval);
+        updateLeaderboardFlag = false;
+        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      });
+      
+      document.getElementById('replay-chord').addEventListener('click', () => {
+        if (gameActive && lastChordNotes.length > 0) {
+          playArpeggio(lastChordNotes);
+        }
+      });
+      
+      async function finishGame() {
+        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        if (updateLeaderboardFlag) {
+          await updateLeaderboard(playerName, score);
+        }
+        document.getElementById('game-panel').style.display = "none";
+        showLeaderboard(playerName, score);
+      }
+      
+      document.getElementById('close-leaderboard').addEventListener('click', () => {
+        document.getElementById('leaderboard-panel').style.display = "none";
+        document.getElementById('config-panel').style.display = "block";
+      });
+      
+      // Nascondi il pannello di gioco all'avvio
+      document.getElementById('game-panel').style.display = "none";
+      
+      // Animazione del punteggio
+      function animateScore(finalScore) {
+        let start = displayedScore;
+        let change = finalScore - start;
+        let duration = 1000;
+        let startTime = null;
+        function animate(timestamp) {
+          if (!startTime) startTime = timestamp;
+          let progress = timestamp - startTime;
+          let currentValue = Math.round(start + (change * progress / duration));
+          document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+          if (progress < duration) {
+            requestAnimationFrame(animate);
+          } else {
+            document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+            displayedScore = finalScore;
+            setTimeout(() => {
+              document.getElementById("scoreboard").style.color = "black";
+            }, 500);
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+      // Timer globale (60 secondi)
+      function startGlobalTimer(durationMs) {
+        const timerBar = document.getElementById('timer-bar');
+        timerBar.style.width = "100%";
+        gameEndTime = Date.now() + durationMs;
+        globalTimerInterval = setInterval(() => {
+          let remaining = gameEndTime - Date.now();
+          let percent = remaining / durationMs;
+          if (percent < 0) percent = 0;
+          timerBar.style.width = (percent * 100) + "%";
+          if (remaining <= 15000) {
+            timerBar.classList.add("time-warning");
+          } else {
+            timerBar.classList.remove("time-warning");
+          }
+          console.log("Tempo rimanente: ", remaining);
+          if (remaining <= 0) {
+            console.log("Timer scaduto: termina il gioco");
+            clearInterval(globalTimerInterval);
+            updateLeaderboardFlag = true;
+            endGameDueToTime();
+          }
+        }, 50);
+      }
+      
+      function endGameDueToTime() {
+        gameActive = false;
+        document.getElementById('chord-info').innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      }
+      
+      // Funzioni di gioco
+      function generateRandomChord() {
+        clearKeyboardSelection();
+        document.getElementById('chord-info').innerHTML = "";
+        selectedRoot = allowedRootNotes[Math.floor(Math.random() * allowedRootNotes.length)];
+        currentChordType = allowedChordTypes[Math.floor(Math.random() * allowedChordTypes.length)];
+        playCurrentChord();
+      }
+      
+      function playCurrentChord() {
+        clearKeyboardSelection();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (m) {
+            let notePart = m[1], octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        lastChordNotes = notesForPlayback;
+        if (soundOn) {
+          Tone.start();
+          piano.triggerAttackRelease(notesForPlayback, "2n");
+        }
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (match) {
+            let notePart = match[1], octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
+          }
+        });
+      }
+      
+      // Riproduce l'accordo come arpeggio (200 ms di ritardo)
+      function playArpeggio(notes) {
+        notes.forEach((note, i) => {
+          setTimeout(() => {
+            piano.triggerAttackRelease(note, "8n");
+          }, i * 200);
+        });
+      }
+      
+      // Gestione delle risposte
+      function processAnswer(isCorrect, message) {
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        if (isCorrect) {
+          consecutiveCorrect++;
+          let basePoints = allowedChordTypes.length * 50;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(200 * Math.pow(1.05, consecutiveCorrect - 3)) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById('chord-info').innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+          document.getElementById("scoreboard").style.color = "green";
+          if (consecutiveCorrect >= 3) {
+            bonusIndicator.classList.add('bonus-active');
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else {
+            bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.textContent = "Bonus";
+          }
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomChord();
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+          }, 150);
+          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        } else {
+          let penalty = Math.floor(score / 3);
+          score = score - penalty;
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
+          document.getElementById("scoreboard").style.color = "red";
+          animateScore(score);
+          setTimeout(() => {
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+          }, 150);
+        }
+      }
+      
+      function generaBottoniRisposta() {
+        const container = document.getElementById('chord-buttons');
+        container.innerHTML = "";
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            let tipo = opzione.getAttribute('data-chord');
+            let btn = document.createElement('button');
+            btn.classList.add('chord-button');
+            btn.dataset.chord = tipo;
+            btn.textContent = chordNamesItalian[tipo] || tipo;
+            btn.addEventListener('click', function() {
+              if (!gameActive) return;
+              if (this.dataset.chord === currentChordType) {
+                this.classList.add('flash-correct');
+                setTimeout(() => { this.classList.remove('flash-correct'); }, 300);
+                processAnswer(true, "Corretto!");
+              } else {
+                this.classList.add('flash-wrong');
+                setTimeout(() => { this.classList.remove('flash-wrong'); }, 300);
+                processAnswer(false, "Sbagliato! Riprova");
+              }
+            });
+            container.appendChild(btn);
+          }
+        });
+      }
+      
+      // Controlli di gioco
+      document.getElementById('end-game').addEventListener('click', () => {
+        gameActive = false;
+        clearInterval(globalTimerInterval);
+        updateLeaderboardFlag = false;
+        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      });
+      
+      document.getElementById('replay-chord').addEventListener('click', () => {
+        if (gameActive && lastChordNotes.length > 0) {
+          playArpeggio(lastChordNotes);
+        }
+      });
+      
+      async function finishGame() {
+        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        if (updateLeaderboardFlag) {
+          await updateLeaderboard(playerName, score);
+        }
+        document.getElementById('game-panel').style.display = "none";
+        showLeaderboard(playerName, score);
+      }
+      
+      document.getElementById('close-leaderboard').addEventListener('click', () => {
+        document.getElementById('leaderboard-panel').style.display = "none";
+        document.getElementById('config-panel').style.display = "block";
+      });
+      
+      // Nascondi il pannello di gioco all'avvio
+      document.getElementById('game-panel').style.display = "none";
+      
+      // Animazione del punteggio (displayedScore dichiarata una sola volta)
+      function animateScore(finalScore) {
+        let start = displayedScore;
+        let change = finalScore - start;
+        let duration = 1000; // 1 secondo
+        let startTime = null;
+        function animate(timestamp) {
+          if (!startTime) startTime = timestamp;
+          let progress = timestamp - startTime;
+          let currentValue = Math.round(start + (change * progress / duration));
+          document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+          if (progress < duration) {
+            requestAnimationFrame(animate);
+          } else {
+            document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+            displayedScore = finalScore;
+            setTimeout(() => {
+              document.getElementById("scoreboard").style.color = "black";
+            }, 500);
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+      // Timer globale (60 secondi)
+      function startGlobalTimer(durationMs) {
+        const timerBar = document.getElementById('timer-bar');
+        timerBar.style.width = "100%";
+        gameEndTime = Date.now() + durationMs;
+        globalTimerInterval = setInterval(() => {
+          let remaining = gameEndTime - Date.now();
+          let percent = remaining / durationMs;
+          if (percent < 0) percent = 0;
+          timerBar.style.width = (percent * 100) + "%";
+          if (remaining <= 15000) {
+            timerBar.classList.add("time-warning");
+          } else {
+            timerBar.classList.remove("time-warning");
+          }
+          console.log("Tempo rimanente: ", remaining);
+          if (remaining <= 0) {
+            console.log("Timer scaduto: termina il gioco");
+            clearInterval(globalTimerInterval);
+            updateLeaderboardFlag = true;
+            endGameDueToTime();
+          }
+        }, 50);
+      }
+      
+      function endGameDueToTime() {
+        gameActive = false;
+        document.getElementById('chord-info').innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      }
+      
+      // Funzioni di gioco
+      function generateRandomChord() {
+        clearKeyboardSelection();
+        document.getElementById('chord-info').innerHTML = "";
+        selectedRoot = allowedRootNotes[Math.floor(Math.random() * allowedRootNotes.length)];
+        currentChordType = allowedChordTypes[Math.floor(Math.random() * allowedChordTypes.length)];
+        playCurrentChord();
+      }
+      
+      function playCurrentChord() {
+        clearKeyboardSelection();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (m) {
+            let notePart = m[1], octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        lastChordNotes = notesForPlayback;
+        if (soundOn) {
+          Tone.start();
+          piano.triggerAttackRelease(notesForPlayback, "2n");
+        }
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (match) {
+            let notePart = match[1], octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
+          }
+        });
+      }
+      
+      // Riproduce l'accordo come arpeggio (200 ms di ritardo)
+      function playArpeggio(notes) {
+        notes.forEach((note, i) => {
+          setTimeout(() => {
+            piano.triggerAttackRelease(note, "8n");
+          }, i * 200);
+        });
+      }
+      
+      // Gestione delle risposte
+      function processAnswer(isCorrect, message) {
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        if (isCorrect) {
+          consecutiveCorrect++;
+          let basePoints = allowedChordTypes.length * 50;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(200 * Math.pow(1.05, consecutiveCorrect - 3)) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById('chord-info').innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+          document.getElementById("scoreboard").style.color = "green";
+          if (consecutiveCorrect >= 3) {
+            bonusIndicator.classList.add('bonus-active');
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else {
+            bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.textContent = "Bonus";
+          }
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomChord();
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+          }, 150);
+          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        } else {
+          let penalty = Math.floor(score / 3);
+          score = score - penalty;
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
+          document.getElementById("scoreboard").style.color = "red";
+          animateScore(score);
+          setTimeout(() => {
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+          }, 150);
+        }
+      }
+      
+      function generaBottoniRisposta() {
+        const container = document.getElementById('chord-buttons');
+        container.innerHTML = "";
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            let tipo = opzione.getAttribute('data-chord');
+            let btn = document.createElement('button');
+            btn.classList.add('chord-button');
+            btn.dataset.chord = tipo;
+            btn.textContent = chordNamesItalian[tipo] || tipo;
+            btn.addEventListener('click', function() {
+              if (!gameActive) return;
+              if (this.dataset.chord === currentChordType) {
+                this.classList.add('flash-correct');
+                setTimeout(() => { this.classList.remove('flash-correct'); }, 300);
+                processAnswer(true, "Corretto!");
+              } else {
+                this.classList.add('flash-wrong');
+                setTimeout(() => { this.classList.remove('flash-wrong'); }, 300);
+                processAnswer(false, "Sbagliato! Riprova");
+              }
+            });
+            container.appendChild(btn);
+          }
+        });
+      }
+      
+      // Controlli di gioco
+      document.getElementById('end-game').addEventListener('click', () => {
+        gameActive = false;
+        clearInterval(globalTimerInterval);
+        updateLeaderboardFlag = false;
+        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        setTimeout(() => { finishGame(); }, 1500);
+      });
+      
+      document.getElementById('replay-chord').addEventListener('click', () => {
+        if (gameActive && lastChordNotes.length > 0) {
+          playArpeggio(lastChordNotes);
+        }
+      });
+      
+      async function finishGame() {
+        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        if (updateLeaderboardFlag) {
+          await updateLeaderboard(playerName, score);
+        }
+        document.getElementById('game-panel').style.display = "none";
+        showLeaderboard(playerName, score);
+      }
+      
+      document.getElementById('close-leaderboard').addEventListener('click', () => {
+        document.getElementById('leaderboard-panel').style.display = "none";
+        document.getElementById('config-panel').style.display = "block";
+      });
+      
+      // Nascondi il pannello di gioco all'avvio
+      document.getElementById('game-panel').style.display = "none";
+      
+      // Avvio della partita
+      document.getElementById('start-game').addEventListener('click', () => {
+        allowedChordTypes = [];
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            allowedChordTypes.push(opzione.getAttribute('data-chord'));
+          }
+        });
+        if (allowedChordTypes.length === 0) {
+          alert("Seleziona almeno un tipo di accordo su cui allenarti!");
+          return;
+        }
+        const mostraKeyboard = document.getElementById('toggle-keyboard').checked;
+        keyboard.style.display = mostraKeyboard ? "block" : "none";
+        document.getElementById('config-panel').style.display = "none";
+        document.getElementById('game-panel').style.display = "block";
+        document.getElementById('chord-info').innerHTML = "";
+        generaBottoniRisposta();
+        score = 0;
+        displayedScore = 0;
+        document.getElementById('scoreboard').textContent = "Punteggio: 0";
+        consecutiveCorrect = 0;
+        bonusIndicator.classList.remove('bonus-active');
+        bonusIndicator.textContent = "Bonus";
+        updateLeaderboardFlag = true;
+        gameActive = true;
+        startGlobalTimer(FIXED_DURATION);
+        generateRandomChord();
+      });
+      
+    })(); // Fine IIFE
+  </script>
+</body>
+</html>
