@@ -48,14 +48,17 @@
       font-size: 22px;
     }
     
-    /* Input modern con Floating Label */
+    /* Input moderno con Floating Label (modifica minima per smartphone) */
     .input-container {
       position: relative;
       margin: 20px auto;
       max-width: 300px;
       text-align: left;
+      display: flex;
+      flex-direction: column;
     }
     .input-container input {
+      display: block;
       width: 100%;
       padding: 12px;
       font-size: 16px;
@@ -106,6 +109,30 @@
     #config-panel p {
       font-size: 14px;
       margin: 5px;
+    }
+    
+    /* Pannello per le shortcut */
+    #shortcuts-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 10px auto;
+      background: #fff;
+      display: none;
+    }
+    #shortcuts-panel h3 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    #shortcuts-panel label {
+      font-size: 14px;
+      margin: 5px;
+      display: inline-block;
+    }
+    #shortcuts-panel input {
+      width: 30px;
+      text-align: center;
     }
     
     /* Pulsanti */
@@ -460,8 +487,27 @@
         <input type="checkbox" id="toggle-keyboard" checked> Mostra tastiera
       </label>
     </div>
+    <!-- Pulsanti per le modalità di gioco -->
     <button id="start-game" class="game-button">Inizia Gioco</button>
     <button id="view-leaderboard" class="game-button">Visualizza Classifica</button>
+    <button id="start-trial" class="game-button">Prova</button>
+    <button id="toggle-shortcuts" class="game-button">Configura Shortcuts</button>
+    <!-- Pannello per configurare le shortcut -->
+    <div id="shortcuts-panel">
+      <h3>Configura Shortcut per rispondere agli accordi</h3>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+        <label>Maggiore: <input type="text" id="shortcut-major" maxlength="1" value="Q"></label>
+        <label>Minore: <input type="text" id="shortcut-m" maxlength="1" value="W"></label>
+        <label>Settima: <input type="text" id="shortcut-7" maxlength="1" value="E"></label>
+        <label>maj7: <input type="text" id="shortcut-maj7" maxlength="1" value="R"></label>
+        <label>min‑maj7: <input type="text" id="shortcut-mmaj7" maxlength="1" value="T"></label>
+        <label>Aumentato: <input type="text" id="shortcut-aug" maxlength="1" value="Y"></label>
+        <label>Diminuito: <input type="text" id="shortcut-dim" maxlength="1" value="U"></label>
+        <label>sus2: <input type="text" id="shortcut-sus2" maxlength="1" value="I"></label>
+        <label>sus4: <input type="text" id="shortcut-sus4" maxlength="1" value="O"></label>
+      </div>
+    </div>
+    
     <!-- Bottone Admin -->
     <button id="admin-btn" class="game-button2">*</button>
     
@@ -515,6 +561,7 @@
     (function() {
       // Variabili globali per il gioco
       let gameActive = false;
+      let trialMode = false; // Modalità "Prova"
       let score = 0;
       let currentChordType = "";
       let selectedRoot = "";
@@ -531,10 +578,22 @@
       let updateLeaderboardFlag = true;
       let displayedScore = 0;  // Per l'animazione del punteggio
       
+      // Shortcut personalizzabili (default)
+      let customShortcuts = {
+        "": "Q",         // Maggiore
+        "m": "W",        // Minore
+        "7": "E",
+        "maj7": "R",
+        "m(maj7)": "T",
+        "aug": "Y",
+        "dim": "U",
+        "sus2": "I",
+        "sus4": "O"
+      };
+      
       // ---------------------------
       // FUNZIONI METRICS (Firestore)
       // ---------------------------
-      
       function updateVisitCounters() {
         db.collection("metrics").doc("counters").update({
           totalVisits: firebase.firestore.FieldValue.increment(1)
@@ -570,21 +629,12 @@
           });
       }
       
-      // Aggiorna le visite all'avvio della pagina
-      window.addEventListener("load", () => {
-        updateVisitCounters();
-      });
-      
+      window.addEventListener("load", updateVisitCounters);
       document.getElementById("refreshMetrics").addEventListener("click", loadMetrics);
-      
-      // ---------------------------
-      // FINE FUNZIONI METRICS
-      // ---------------------------
       
       // ---------------------------
       // FUNZIONI DEL GIOCO
       // ---------------------------
-      
       async function updateLeaderboard(name, score) {
         try {
           await db.collection("leaderboard").add({
@@ -649,18 +699,26 @@
         }
       });
       
+      // EVENTO: Bottone Chiudi Classifica
+      document.getElementById("close-leaderboard").addEventListener("click", function() {
+        document.getElementById("leaderboard-panel").style.display = "none";
+        document.getElementById("config-panel").style.display = "block";
+      });
+      
       // ADMIN: Gestione login
       const adminBtn = document.getElementById("admin-btn");
       const adminLoginDiv = document.getElementById("admin-login");
       const adminPanelDiv = document.getElementById("admin-panel");
       const adminLoginBtn = document.getElementById("admin-login-btn");
+      const adminPasswordInput = document.getElementById("admin-password");
       
       adminBtn.addEventListener("click", function() {
         adminLoginDiv.style.display = "block";
+        adminPasswordInput.focus();
       });
       
       adminLoginBtn.addEventListener("click", function() {
-        const pass = document.getElementById("admin-password").value;
+        const pass = adminPasswordInput.value;
         if (pass === "admin123") {
           adminLoginDiv.style.display = "none";
           adminPanelDiv.style.display = "block";
@@ -670,6 +728,13 @@
           });
         } else {
           alert("Password errata!");
+        }
+        adminPasswordInput.value = "";
+      });
+      
+      adminPasswordInput.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          adminLoginBtn.click();
         }
       });
       
@@ -716,20 +781,13 @@
         let base = naturalPitches[letter];
         return ((base + accidentalValue(acc)) % 12 + 12) % 12;
       }
-      const italianSharpNames = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
-      const italianFlatNames  = ["Do","Reb","Re","Mib","Mi","Fa","Solb","Sol","Lab","La","Sib","Si"];
       function formatNote(note, useSharps, withOctave) {
         let m = note.match(/^([A-G](?:#|b)*)(\d+)?$/);
         if (m) {
           let notePart = m[1], octave = m[2] || "";
-          return useSharps ? convertToItalianNoteName(notePart) + (withOctave ? octave : "") : italianFlatNames[getPitch(notePart)] + (withOctave ? octave : "");
+          return useSharps ? notePart + (withOctave ? octave : "") : notePart + (withOctave ? octave : "");
         }
         return note;
-      }
-      function convertToItalianNoteName(noteStr) {
-        const mapping = { "A": "La", "B": "Si", "C": "Do", "D": "Re", "E": "Mi", "F": "Fa", "G": "Sol" };
-        let letter = noteStr[0], accidental = noteStr.slice(1);
-        return mapping[letter] + accidental;
       }
       function classicalToKeyboard(note) {
         let naturalPitches = {"C":0, "D":2, "E":4, "F":5, "G":7, "A":9, "B":11};
@@ -777,7 +835,7 @@
         return assigned;
       }
       
-      // Formule degli accordi (con sus2 e sus4)
+      // Formule degli accordi
       const chordFormulas = {
         "":        [ {degree:0, semitones:0}, {degree:2, semitones:4}, {degree:4, semitones:7} ],
         "m":       [ {degree:0, semitones:0}, {degree:2, semitones:3}, {degree:4, semitones:7} ],
@@ -875,55 +933,135 @@
       // FUNZIONI DEL GIOCO
       // ---------------------------
       
-      // Il punteggio base varia: se l'accordo è maggiore o minore, è 50; altrimenti aumenta in base al numero di accordi extra selezionati.
-      function processAnswer(isCorrect, message) {
+      // playCurrentChord: suona le note in sequenza con 30ms di delay
+      function playCurrentChord() {
+        clearKeyboardSelection();
+        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
+        if (!m) return;
+        let rootNote = m[1];
+        let formula = chordFormulas[currentChordType];
+        if (!formula) {
+          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
+          return;
+        }
+        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
+        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
+        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
+        let notesForPlayback = assignedChordNotes.map(note => {
+          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (m) {
+            let notePart = m[1], octave = m[2];
+            return classicalToKeyboard(notePart) + octave;
+          }
+          return note;
+        });
+        lastChordNotes = notesForPlayback;
+        if (soundOn) {
+          Tone.start();
+          notesForPlayback.forEach((note, i) => {
+            setTimeout(() => {
+              piano.triggerAttackRelease(note, "2n", undefined, 0.7);
+            }, i * 5);
+          });
+        }
+        assignedChordNotes.forEach(note => {
+          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
+          if (match) {
+            let notePart = match[1], octave = match[2];
+            let kbNote = classicalToKeyboard(notePart);
+            let keyName = kbNote + octave;
+            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
+          }
+        });
+      }
+      
+      // playArpeggio (invariata)
+      function playArpeggio(notes) {
+        notes.forEach((note, i) => {
+          setTimeout(() => {
+            piano.triggerAttackRelease(note, "2n", undefined, 0.7);
+          }, i * 300);
+        });
+      }
+      
+      document.getElementById('end-game').addEventListener('click', () => {
+        gameActive = false;
+        clearInterval(globalTimerInterval);
+        updateLeaderboardFlag = false;
+        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
         Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
-        if (isCorrect) {
-          consecutiveCorrect++;
-          let basePoints;
-          if (currentChordType === "" || currentChordType === "m") {
-            basePoints = 50;
-          } else {
-            let extra = allowedChordTypes.length - 2;
-            if (extra < 0) extra = 0;
-            basePoints = 50 + 200 * extra*2;
-          }
-          // Bonus aumentato: fattore base 500
-          let extra = allowedChordTypes.length - 2;
-          if (extra < 0) extra = 0;
-          let bonus = (consecutiveCorrect >= 3) ? Math.round((100+(100*extra*2)) * Math.pow(1.2, consecutiveCorrect - 3)) : 0;
-          let pointsAwarded = basePoints + bonus;
-          score += pointsAwarded;
-          document.getElementById('chord-info').innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
-          document.getElementById("scoreboard").style.color = "green";
-          if (consecutiveCorrect >= 3) {
-            bonusIndicator.classList.add('bonus-active');
-            bonusIndicator.textContent = "Bonus +" + bonus;
-          } else {
-            bonusIndicator.classList.remove('bonus-active');
-            bonusIndicator.textContent = "Bonus";
-          }
-          animateScore(score);
-          setTimeout(() => {
-            generateRandomChord();
-            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
-          }, 150);
-          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        setTimeout(() => { finishGame(); }, 150);
+      });
+      
+      document.getElementById('replay-chord').addEventListener('click', () => {
+        if (gameActive && lastChordNotes.length > 0) {
+          playArpeggio(lastChordNotes);
+        }
+      });
+      
+      async function finishGame() {
+        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        updateGamePlayedCounter();
+        if (trialMode) {
+          // In modalità prova: non mostrare alcuna info sul punteggio
+          document.getElementById('game-panel').style.display = "none";
+          // Ripristina visibilità degli elementi per la prossima partita
+          document.getElementById('scoreboard').style.display = "block";
+          document.getElementById('chord-info').style.display = "block";
+          // Torna automaticamente alla schermata principale
+          document.getElementById('config-panel').style.display = "block";
+          trialMode = false;
         } else {
-          let penalty = Math.floor(score/5);
-          score -= penalty;
-          consecutiveCorrect = 0;
-          bonusIndicator.classList.remove('bonus-active');
-          bonusIndicator.textContent = "Bonus";
-          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
-          document.getElementById("scoreboard").style.color = "red";
-          animateScore(score);
-          setTimeout(() => {
-            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
-            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
-          }, 150);
+          if (updateLeaderboardFlag) {
+            await updateLeaderboard(playerName, score);
+          }
+          document.getElementById('game-panel').style.display = "none";
+          showLeaderboard(playerName, score);
         }
       }
+      
+      // Aggiorna le shortcut dai campi input
+      function updateCustomShortcuts() {
+        customShortcuts = {
+          "": document.getElementById("shortcut-major").value.toUpperCase() || "Q",
+          "m": document.getElementById("shortcut-m").value.toUpperCase() || "W",
+          "7": document.getElementById("shortcut-7").value.toUpperCase() || "E",
+          "maj7": document.getElementById("shortcut-maj7").value.toUpperCase() || "R",
+          "m(maj7)": document.getElementById("shortcut-mmaj7").value.toUpperCase() || "T",
+          "aug": document.getElementById("shortcut-aug").value.toUpperCase() || "Y",
+          "dim": document.getElementById("shortcut-dim").value.toUpperCase() || "U",
+          "sus2": document.getElementById("shortcut-sus2").value.toUpperCase() || "I",
+          "sus4": document.getElementById("shortcut-sus4").value.toUpperCase() || "O"
+        };
+      }
+      
+// Aggiungi un listener per l'evento keydown
+document.addEventListener("keydown", function(event) {
+  // Controlla se il tasto premuto è la barra spaziatrice
+  // Utilizzando event.code (consigliato per moderni browser)
+
+    if (event.code === "Space") {
+    if (gameActive && lastChordNotes.length > 0) {
+      playArpeggio(lastChordNotes)
+    }
+  }
+} );
+    // Se vuoi evitare lo scrolling della pagina quando premi spazio:
+  
+      // Listener per le shortcut durante il gioco
+      document.addEventListener('keydown', function(event) {
+        if (!gameActive) return;
+        const key = event.key.toUpperCase();
+        for (const chord in customShortcuts) {
+          if (customShortcuts[chord] === key) {
+            const btn = document.querySelector(`.chord-button[data-chord="${chord}"]`);
+            if (btn && !btn.disabled) {
+              btn.click();
+              break;
+            }
+          }
+        }
+      });
       
       function generaBottoniRisposta() {
         const container = document.getElementById('chord-buttons');
@@ -951,6 +1089,38 @@
             container.appendChild(btn);
           }
         });
+      }
+      
+      function processAnswer(isCorrect, message) {
+        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
+        if (isCorrect) {
+          consecutiveCorrect++;
+          let basePoints = (currentChordType === "" || currentChordType === "m") ? 50 : 50;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(100 * Math.pow(1.2, consecutiveCorrect - 3)) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById('chord-info').innerHTML = "<span style='color: green; font-size: 20px;'>Corretto! +" + pointsAwarded + " punti</span>";
+          document.getElementById("scoreboard").style.color = "green";
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomChord();
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+          }, 150);
+          setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+        } else {
+          let penalty = Math.floor(score/5);
+          score -= penalty;
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! -" + penalty + "</span>";
+          document.getElementById("scoreboard").style.color = "red";
+          animateScore(score);
+          setTimeout(() => {
+            Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = false);
+            setTimeout(() => { document.getElementById('chord-info').innerHTML = ""; }, 1500);
+          }, 150);
+        }
       }
       
       function animateScore(finalScore) {
@@ -1013,84 +1183,9 @@
         playCurrentChord();
       }
       
-      function playCurrentChord() {
-        clearKeyboardSelection();
-        let m = selectedRoot.match(/^([A-G](?:#|b)?)/);
-        if (!m) return;
-        let rootNote = m[1];
-        let formula = chordFormulas[currentChordType];
-        if (!formula) {
-          document.getElementById('chord-info').textContent = "Accordo non riconosciuto";
-          return;
-        }
-        let chordNotes = formula.map(f => spellNote(rootNote, f.degree, f.semitones));
-        let baseOctave = parseInt(selectedRoot.match(/\d+/)[0]);
-        let assignedChordNotes = assignChordOctaves(chordNotes, baseOctave, rootNote);
-        let notesForPlayback = assignedChordNotes.map(note => {
-          let m = note.match(/^([A-G](?:#|b)*)(\d+)$/);
-          if (m) {
-            let notePart = m[1], octave = m[2];
-            return classicalToKeyboard(notePart) + octave;
-          }
-          return note;
-        });
-        lastChordNotes = notesForPlayback;
-        if (soundOn) {
-          Tone.start();
-          piano.triggerAttackRelease(notesForPlayback, "2n");
-        }
-        assignedChordNotes.forEach(note => {
-          let match = note.match(/^([A-G](?:#|b)*)(\d+)$/);
-          if (match) {
-            let notePart = match[1], octave = match[2];
-            let kbNote = classicalToKeyboard(notePart);
-            let keyName = kbNote + octave;
-            if (keyElements[keyName]) { keyElements[keyName].classList.add('active'); }
-          }
-        });
-      }
-      
-      function playArpeggio(notes) {
-        notes.forEach((note, i) => {
-          setTimeout(() => {
-            piano.triggerAttackRelease(note, "8n");
-          }, i * 200);
-        });
-      }
-      
-      document.getElementById('end-game').addEventListener('click', () => {
-        gameActive = false;
-        clearInterval(globalTimerInterval);
-        updateLeaderboardFlag = false;
-        document.getElementById('chord-info').innerHTML = "<span>Gioco terminato manualmente. Il punteggio non verrà conteggiato.</span>";
-        Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
-        setTimeout(() => { finishGame(); }, 1500);
-      });
-      
-      document.getElementById('replay-chord').addEventListener('click', () => {
-        if (gameActive && lastChordNotes.length > 0) {
-          playArpeggio(lastChordNotes);
-        }
-      });
-      
-      async function finishGame() {
-        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
-        updateGamePlayedCounter();
-        if (updateLeaderboardFlag) {
-          await updateLeaderboard(playerName, score);
-        }
-        document.getElementById('game-panel').style.display = "none";
-        showLeaderboard(playerName, score);
-      }
-      
-      document.getElementById('close-leaderboard').addEventListener('click', () => {
-        document.getElementById('leaderboard-panel').style.display = "none";
-        document.getElementById('config-panel').style.display = "block";
-      });
-      
-      document.getElementById('game-panel').style.display = "none";
-      
+      // Avvio partita modalità normale
       document.getElementById('start-game').addEventListener('click', () => {
+        updateCustomShortcuts();
         allowedChordTypes = [];
         const opzioni = document.querySelectorAll('.toggle-btn');
         opzioni.forEach(opzione => {
@@ -1098,10 +1193,13 @@
             allowedChordTypes.push(opzione.getAttribute('data-chord'));
           }
         });
-        if (allowedChordTypes.length === 0) {
-          alert("Seleziona almeno un tipo di accordo su cui allenarti!");
+        if (allowedChordTypes.length === 1) {
+          alert("Seleziona almeno due tipi di accordo su cui allenarti!");
           return;
         }
+        // In modalità normale, mostra lo scoreboard e le info
+        document.getElementById('scoreboard').style.display = "block";
+        document.getElementById('chord-info').style.display = "block";
         const mostraKeyboard = document.getElementById('toggle-keyboard').checked;
         keyboard.style.display = mostraKeyboard ? "block" : "none";
         document.getElementById('config-panel').style.display = "none";
@@ -1116,8 +1214,51 @@
         bonusIndicator.textContent = "Bonus";
         updateLeaderboardFlag = true;
         gameActive = true;
+        trialMode = false;
         startGlobalTimer(FIXED_DURATION);
         generateRandomChord();
+      });
+      
+      // Avvio partita modalità "Prova"
+      document.getElementById('start-trial').addEventListener('click', () => {
+        updateCustomShortcuts();
+        allowedChordTypes = [];
+        const opzioni = document.querySelectorAll('.toggle-btn');
+        opzioni.forEach(opzione => {
+          if (opzione.classList.contains('active')) {
+            allowedChordTypes.push(opzione.getAttribute('data-chord'));
+          }
+        });
+        if (allowedChordTypes.length === 1) {
+          alert("Seleziona almeno due tipi di accordo su cui allenarti!");
+          return;
+        }
+        // In modalità prova nascondi le info sul punteggio (scoreboard e chord-info)
+        document.getElementById('scoreboard').style.display = "none";
+        document.getElementById('chord-info').style.display = "none";
+        const mostraKeyboard = document.getElementById('toggle-keyboard').checked;
+        keyboard.style.display = mostraKeyboard ? "block" : "none";
+        document.getElementById('config-panel').style.display = "none";
+        document.getElementById('game-panel').style.display = "block";
+        generaBottoniRisposta();
+        score = 0;
+        displayedScore = 0;
+        // Anche se il punteggio viene aggiornato internamente, non verrà mostrato
+        document.getElementById('scoreboard').textContent = "";
+        consecutiveCorrect = 0;
+        bonusIndicator.classList.remove('bonus-active');
+        bonusIndicator.textContent = "Bonus";
+        updateLeaderboardFlag = false; // In modalità prova non aggiorniamo la leaderboard
+        trialMode = true;
+        gameActive = true;
+        startGlobalTimer(FIXED_DURATION);
+        generateRandomChord();
+      });
+      
+      // Toggle per mostrare/nascondere il pannello delle shortcut
+      document.getElementById('toggle-shortcuts').addEventListener('click', () => {
+        const panel = document.getElementById('shortcuts-panel');
+        panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
       });
       
     })(); // Fine IIFE
