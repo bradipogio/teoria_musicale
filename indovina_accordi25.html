@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -49,7 +48,7 @@
       font-size: 22px;
     }
     
-    /* Input moderno con Floating Label (modifica minima per smartphone) */
+    /* Input moderno con Floating Label */
     .input-container {
       position: relative;
       margin: 20px auto;
@@ -71,7 +70,7 @@
     }
     .input-container input:focus {
       border-color: #007bff;
-      box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+      box-shadow: 0 0 5px rgba(0,123,255,0.5);
     }
     .input-container label {
       position: absolute;
@@ -271,20 +270,45 @@
       font-size: 14px;
       border: none;
       border-radius: 4px;
-      background: #ccc;
+      background: #ccc;  /* Grigio di default */
       color: #000;
       margin: 3px;
       min-width: 130px;
+      transition: background 0.3s;
+    }
+    /* Stato bonus attivo (3-9 corrette): bottone rosso con pulsazione */
+    #bonus-indicator.bonus-active {
+      background-color: red;
+      color: #fff;
+      animation: bonusPulse 0.5s infinite;
     }
     @keyframes bonusPulse {
       0% { transform: scale(1); }
-      50% { transform: scale(1.3); }
+      50% { transform: scale(1.2); }
       100% { transform: scale(1); }
     }
-    .bonus-active {
-      background-color: red !important;
-      color: #fff !important;
-      animation: bonusPulse 0.5s infinite;
+    /* Stato rainbow (>=10 corrette): solo il colore cambia in modo dinamico senza ruotare il bottone */
+    #bonus-indicator.rainbow {
+      animation: rainbowCycle 3s linear infinite, rainbowPulse 0.5s infinite;
+      color: #fff;
+             
+
+    }
+    @keyframes rainbowPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    @keyframes rainbowCycle {
+      0% { background-color: red; }
+      16.67% { background-color: yellow; }
+      33.33% { background-color: blue; }
+      33.34% { background-color: blue; }
+      50% { background-color: red; }
+      66.67% { background-color: yellow; }
+      66.68% { background-color: yellow; }
+      83.33% { background-color: blue; }
+      100% { background-color: red; }
     }
     
     /* Timer */
@@ -361,8 +385,11 @@
       min-height: 30px;
     }
     
-    /* Tastiera */
+    /* Tastiera: centrata con FlexBox e nascosta di default */
     #keyboard {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       position: relative;
       width: 90%;
       max-width: 600px;
@@ -429,8 +456,21 @@
       background: #e9e9e9;
     }
     #leaderboard-panel tr.highlight {
-      background: rgb(255, 217, 0) !important;
+      background: rgb(255, 217, 0);
     }
+    #leaderboard-panel {
+  position: relative;
+}
+#close-leaderboard {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+#leaderboard-content {
+  max-height: 500px; /* Imposta l'altezza massima desiderata */
+  overflow-y: auto;
+}
+
     
     /* Bottone admin (*) */
     #admin-btn {
@@ -441,6 +481,7 @@
       right: 10px;
     }
   </style>
+  
   <!-- Firebase Initialization -->
   <script>
     const firebaseConfig = {
@@ -483,8 +524,9 @@
       <button type="button" class="toggle-btn" data-chord="sus4">sus4</button>
     </div>
     <div id="keyboard-option">
+      <!-- La tastiera è disabilitata di default -->
       <label>
-        <input type="checkbox" id="toggle-keyboard" checked> Mostra tastiera
+        <input type="checkbox" id="toggle-keyboard"> Mostra tastiera
       </label>
     </div>
     <!-- Pulsanti per le modalità di gioco -->
@@ -525,11 +567,12 @@
         <p><strong>Visitatori Unici:</strong> <span id="uniqueVisitors">0</span></p>
         <p><strong>Partite Giocate:</strong> <span id="gamesPlayed">0</span></p>
         <button id="refreshMetrics" class="game-button">Aggiorna Dati</button>
+        <button id="clear-leaderboard" class="game-button">Cancella Tutti i Punteggi</button>
+        <button id="close-admin" class="game-button">Chiudi Admin</button>
       </div>
       <h3>Modifica Classifica</h3>
       <div id="admin-leaderboard"></div>
-      <button id="clear-leaderboard" class="game-button">Cancella Tutti i Punteggi</button>
-      <button id="close-admin" class="game-button">Chiudi Admin</button>
+
     </div>
   </div>
   
@@ -546,6 +589,7 @@
     </div>
     <div id="chord-buttons"></div>
     <div id="chord-info"></div>
+    <!-- La tastiera è centrata grazie a FlexBox e, di default, non viene mostrata -->
     <div id="keyboard"></div>
   </div>
   
@@ -684,7 +728,12 @@
         });
         content += "</table>";
         document.getElementById("leaderboard-content").innerHTML = content;
-        document.getElementById("leaderboard-panel").style.display = "block";
+  document.getElementById("leaderboard-panel").style.display = "block";
+
+// Attendi che il DOM abbia aggiornato il contenuto, poi avvia l'animazione
+setTimeout(() => {
+  scrollToHighlighted();
+}, 100);
       }
       
       document.addEventListener("click", async function(e) {
@@ -748,7 +797,7 @@
       
       // Pulsante per visualizzare la classifica pubblica
       document.getElementById("view-leaderboard").addEventListener("click", function() {
-        let playerName = document.getElementById("player-name").value.trim() || "Anonimo";
+        let playerName = document.getElementById("player-name").value.trim();
         showLeaderboard(playerName, 0);
       });
       
@@ -927,7 +976,11 @@
       // FUNZIONI DEL GIOCO
       // ---------------------------
       
-      // Funzione processAnswer con gestione del bonus come nella versione precedente
+      // La funzione processAnswer controlla il contatore:
+      // - <3: bottone rimane grigio.
+      // - 3-9: bottone assume la classe bonus-active (rosso pulsante).
+      // - >=10: bottone assume la classe rainbow (il solo background cambia seguendo il ciclo: 
+      //    "rosso, giallo, blu" → "blu, rosso, giallo" → "giallo, blu, rosso")
       function processAnswer(isCorrect, message) {
         Array.from(document.querySelectorAll('.chord-button')).forEach(b => b.disabled = true);
         if (isCorrect) {
@@ -947,11 +1000,17 @@
           score += pointsAwarded;
           document.getElementById('chord-info').innerHTML = "<span style='color: green; font-size: 20px;'>Corretto! +" + pointsAwarded + " punti</span>";
           document.getElementById("scoreboard").style.color = "green";
-          if (consecutiveCorrect >= 3) {
+          if (consecutiveCorrect >= 3 && consecutiveCorrect < 10) {
+            bonusIndicator.classList.remove('rainbow');
             bonusIndicator.classList.add('bonus-active');
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else if (consecutiveCorrect >= 10) {
+            bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.classList.add('rainbow');
             bonusIndicator.textContent = "Bonus +" + bonus;
           } else {
             bonusIndicator.classList.remove('bonus-active');
+            bonusIndicator.classList.remove('rainbow');
             bonusIndicator.textContent = "Bonus";
           }
           animateScore(score);
@@ -965,6 +1024,7 @@
           score -= penalty;
           consecutiveCorrect = 0;
           bonusIndicator.classList.remove('bonus-active');
+          bonusIndicator.classList.remove('rainbow');
           bonusIndicator.textContent = "Bonus";
           document.getElementById('chord-info').innerHTML = "<span style='color: red; font-size: 20px;'>Sbagliato! Riprova (-" + penalty + ")</span>";
           document.getElementById("scoreboard").style.color = "red";
@@ -1129,7 +1189,7 @@
       });
       
       async function finishGame() {
-        let playerName = document.getElementById('player-name').value.trim() || "Anonimo";
+        let playerName = document.getElementById('player-name').value.trim() || "giocatore";
         updateGamePlayedCounter();
         if (trialMode) {
           // Modalità prova: non mostrare info sul punteggio
@@ -1162,7 +1222,7 @@
         };
       }
       
-      // Listener per l'evento keydown per lo spazio (replay arpeggio)
+      // Listener per la barra spaziatrice (replay arpeggio)
       document.addEventListener("keydown", function(event) {
         if (event.code === "Space") {
           if (gameActive && lastChordNotes.length > 0) {
@@ -1213,6 +1273,7 @@
         document.getElementById('scoreboard').textContent = "Punteggio: 0";
         consecutiveCorrect = 0;
         bonusIndicator.classList.remove('bonus-active');
+        bonusIndicator.classList.remove('rainbow');
         bonusIndicator.textContent = "Bonus";
         updateLeaderboardFlag = true;
         gameActive = true;
@@ -1247,6 +1308,7 @@
         document.getElementById('scoreboard').textContent = "";
         consecutiveCorrect = 0;
         bonusIndicator.classList.remove('bonus-active');
+        bonusIndicator.classList.remove('rainbow');
         bonusIndicator.textContent = "Bonus";
         updateLeaderboardFlag = false;
         trialMode = true;
@@ -1261,13 +1323,47 @@
         panel.style.display = (panel.style.display === "none" || panel.style.display === "") ? "block" : "none";
       });
       
-      // <<--- AGGIUNGIAMO QUI L'EVENT LISTENER PER "CHIUDI CLASSIFICA" --->
+      // Event listener per il tasto "Chiudi Classifica"
       document.getElementById('close-leaderboard').addEventListener('click', () => {
         console.log('Chiudi Classifica cliccato');
         document.getElementById('leaderboard-panel').style.display = "none";
         document.getElementById('config-panel').style.display = "block";
       });
-      
+      function scrollToHighlighted() {
+  const container = document.getElementById("leaderboard-content");
+  const highlightedRow = container.querySelector(".highlight");
+  if (!highlightedRow) return;
+  
+  // Imposta lo scroll iniziale sul fondo del contenitore
+  container.scrollTop = container.scrollHeight - container.clientHeight;
+  
+  // Calcola la posizione target per centrare la riga evidenziata
+  const targetScroll = highlightedRow.offsetTop - (container.clientHeight / 2) + (highlightedRow.clientHeight / 2);
+  
+  const startScroll = container.scrollTop;
+  const distance = targetScroll - startScroll;
+  const duration = 1500; // Durata dell'animazione in millisecondi
+  const startTime = performance.now();
+  
+  // Funzione di easing: easeOutCubic
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+  
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const t = Math.min(elapsed / duration, 1); // t varia da 0 a 1
+    const easedT = easeOutCubic(t);
+    container.scrollTop = startScroll + distance * easedT;
+    
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+}
+
     })(); // Fine IIFE
   </script>
 </body>
