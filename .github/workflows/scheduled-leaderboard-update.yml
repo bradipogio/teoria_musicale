@@ -2,9 +2,7 @@ name: Scheduled Leaderboard Update
 
 on:
   schedule:
-    # Questo trigger esegue il workflow ogni 5 minuti
-    - cron: '*/5 * * * *'
-  # Puoi aggiungere anche un trigger manuale, se vuoi
+    - cron: '* * * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,9 +19,8 @@ jobs:
 
       - name: Run update leaderboard script
         env:
-          # Qui puoi impostare NEW_RESULT se vuoi simulare un aggiornamento,
-          # oppure lo script può raccogliere i dati da una fonte temporanea
-          NEW_RESULT: '{"name": "Esempio", "score": 1000, "timestamp": '$(date +%s)' }'
+          # Per test, qui inseriamo un risultato fittizio (puoi sostituirlo con un aggregato dei dati reali)
+          NEW_RESULT: '{"name": "TestUser", "score": '$(date +%s)' , "timestamp": '$(date +%s)' }'
         run: |
           node update-leaderboard.js
 
