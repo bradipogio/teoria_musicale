@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allenamento Durate delle Note</title>
+  <!-- Usa VexFlow versione 3.0.9 -->
+  <script src="https://unpkg.com/vexflow@3.0.9/releases/vexflow-debug.js"></script>
+  <!-- Google Fonts: Roboto -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <style>
+    /* Reset e stili generali */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f5f5f5;
+      text-align: center;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      margin: 0 auto 10px auto;
+    }
+    .home-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    .home-button:hover { background: #0056b3; transform: scale(1.05); }
+    h1 { font-size: 22px; }
+    /* Input con floating label */
+    .input-container {
+      position: relative;
+      margin: 20px auto;
+      max-width: 300px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+    }
+    .input-container input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .input-container input:focus { border-color: #007bff; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
+    .input-container label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      color: #aaa;
+      font-size: 16px;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      background: #fff;
+      padding: 0 4px;
+    }
+    .input-container input:focus + label,
+    .input-container input:not(:placeholder-shown) + label {
+      top: -10px;
+      left: 10px;
+      font-size: 12px;
+      color: #007bff;
+    }
+    /* Radio group per difficoltà */
+    .radio-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 5px;
+    }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+      text-transform: capitalize;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      background: #ffd700;
+      color: #000;
+      border-color: #ccc;
+    }
+    .game-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #ffd700;
+      color: #000;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .game-button:hover { transform: scale(1.05); }
+    /* Bottone "Visualizza Classifica" in verde */
+    #view-leaderboard {
+      background: #28a745 !important;
+      color: #fff !important;
+    }
+    #view-leaderboard:hover { background: #218838 !important; }
+    /* Timer */
+    #timer-container {
+      width: 100%;
+      max-width: 600px;
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      margin: 10px auto;
+      overflow: hidden;
+    }
+    #timer-bar {
+      height: 100%;
+      width: 100%;
+      background: #007bff;
+      transition: width 0.05s linear;
+    }
+    .time-warning { animation: blinkRed 1s infinite; }
+    @keyframes blinkRed {
+      0% { background-color: #007bff; }
+      50% { background-color: red; }
+      100% { background-color: #007bff; }
+    }
+    /* Pannello Pentagramma */
+    #notationWrapper {
+      width: 220px;
+      height: 200px;
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    /* Bottoni risposta */
+    .answer-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .answer-button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      margin: 5px;
+      flex: 1 1 auto;
+      text-align: center;
+    }
+    .answer-button:hover { transform: scale(1.05); }
+    .flash-correct { background: #28a745 !important; transform: scale(1.1) !important; }
+    .flash-wrong { background: #dc3545 !important; transform: scale(1.1) !important; }
+    /* Punteggio e Bonus */
+    #scoreboard { font-size: 22px; font-weight: bold; margin: 10px 0; }
+    #bonus-indicator {
+      display: inline-block;
+      padding: 8px 12px;
+      font-size: 16px;
+      border-radius: 4px;
+      background: #ccc;
+      color: #000;
+      margin: 5px;
+      min-width: 130px;
+      transition: background 0.3s;
+    }
+    #bonus-indicator.bonus-active {
+      background-color: red;
+      color: #fff;
+      animation: bonusPulse 0.5s infinite;
+    }
+    @keyframes bonusPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    #bonus-indicator.rainbow {
+      animation: rainbowCycle 3s linear infinite, bonusPulse 0.5s infinite;
+      color: #fff;
+    }
+    @keyframes rainbowCycle {
+      0% { background-color: red; }
+      16.67% { background-color: yellow; }
+      33.33% { background-color: blue; }
+      50% { background-color: red; }
+      66.67% { background-color: yellow; }
+      83.33% { background-color: blue; }
+      100% { background-color: red; }
+    }
+    /* Leaderboard */
+    #leaderboard-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 10px auto;
+      background: linear-gradient(135deg, #f1f1f1, #e9e9e9);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: none;
+      position: relative;
+    }
+    #leaderboard-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #leaderboard-panel th,
+    #leaderboard-panel td {
+      padding: 6px;
+      border: 1px solid #888;
+      font-size: 14px;
+    }
+    #leaderboard-panel tr:nth-child(even) { background: #e9e9e9; }
+    #leaderboard-panel tr.highlight { background: rgb(255, 217, 0); }
+    #close-leaderboard {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 10px;
+      font-size: 14px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    #close-leaderboard:hover { background: #218838; transform: scale(1.05); }
+    /* Riferimento */
+    #refTop { margin-bottom: 10px; }
+    #refTop img { max-width: 100%; border-radius: 4px; }
+    /* Pannello Admin (opzionale) */
+    #admin-panel {
+      border: 1px solid #aaa;
+      padding: 8px;
+      margin: 10px auto;
+      max-width: 300px;
+      border-radius: 4px;
+      background: #eee;
+      display: none;
+    }
+    #admin-panel h3 { margin-top: 0; font-size: 16px; }
+    #admin-panel table { width: 100%; border-collapse: collapse; }
+    #admin-panel th,
+    #admin-panel td { border: 1px solid #777; padding: 4px; text-align: center; font-size: 13px; }
+    #admin-panel button { margin: 2px; padding: 4px 8px; font-size: 12px; }
+    /* Bottone Admin */
+    #admin-btn {
+      font-size: 12px;
+      padding: 4px 6px;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    /* Admin Login */
+    #admin-login {
+      display: none;
+      border: 1px solid #777;
+      padding: 8px;
+      margin: 10px auto;
+      max-width: 300px;
+      border-radius: 4px;
+      background: #eee;
+    }
+    #admin-login input[type="password"] {
+      padding: 4px;
+      font-size: 14px;
+      width: 80%;
+      margin-bottom: 5px;
+    }
+    /* Pannello di gioco: riferimento nascosto per default */
+    #game-panel #referenceContainer {
+      display: none;
+    }
+    #game-panel #referenceContainer img {
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Allenamento Durate delle Note</h1>
+  </header>
+  
+  <!-- Pannello di Configurazione -->
+  <div id="config-panel" class="container">
+    <div id="refTop">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/duratenew.png?raw=true" alt="Riferimento Durate">
+    </div>
+    <h2>Impostazioni di Gioco</h2>
+    <div class="input-container">
+      <input type="text" id="player-name" placeholder=" ">
+      <label for="player-name">Inserisci il tuo nome</label>
+    </div>
+    <!-- Selezione della difficoltà -->
+    <div class="config-group">
+      <p>Difficoltà:</p>
+      <div class="radio-group">
+        <input type="radio" id="facile" name="difficulty" value="facile" checked>
+        <label for="facile">Facile</label>
+        <input type="radio" id="medio" name="difficulty" value="medio">
+        <label for="medio">Medio</label>
+        <input type="radio" id="difficile" name="difficulty" value="difficile">
+        <label for="difficile">Difficile</label>
+        <input type="radio" id="ultradifficile" name="difficulty" value="ultradifficile">
+        <label for="ultradifficile">Ultradifficile</label>
+      </div>
+    </div>
+    <button id="startGame" class="game-button">Inizia Gioco</button>
+    <button id="start-trial" class="game-button">Prova</button>
+    <button id="view-leaderboard" class="game-button">Visualizza Classifica</button>
+  </div>
+  
+  <!-- Pannello di Gioco -->
+  <div id="game-panel" class="container" style="display:none;">
+    <button class="game-button" id="toggleReference">Mostra Riferimento</button>
+    <div id="referenceContainer">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/duratenew.png?raw=true" alt="Riferimento Durate">
+    </div>
+    <div id="timer-container">
+      <div id="timer-bar"></div>
+    </div>
+    <div id="scoreboard">Punteggio: 0</div>
+    <div id="bonus-indicator">Bonus</div>
+    <div id="notationWrapper">
+      <div id="notation"></div>
+    </div>
+    <div class="answer-buttons"></div>
+    <div id="result"></div>
+    <button id="endGame" class="game-button">Termina Gioco</button>
+  </div>
+  
+  <!-- Pannello Leaderboard -->
+  <div id="leaderboard-panel">
+    <h2>Classifica Globale</h2>
+    <div id="leaderboard-content"></div>
+    <button id="close-leaderboard" class="game-button">Chiudi Classifica</button>
+  </div>
+  
+  <!-- Pannello Admin (opzionale) -->
+  <button id="admin-btn" class="game-button2" style="display:none;">*</button>
+  <div id="admin-login" style="display:none;">
+    <p>Inserisci la password admin:</p>
+    <input type="password" id="admin-password" placeholder="Password">
+    <button id="admin-login-btn" class="game-button">Login</button>
+  </div>
+  <div id="admin-panel" style="display:none;">
+    <div id="admin-metrics">
+      <p><strong>Visite Totali:</strong> <span id="totalVisits">0</span></p>
+      <p><strong>Visitatori Unici:</strong> <span id="uniqueVisitors">0</span></p>
+      <p><strong>Partite Giocate:</strong> <span id="gamesPlayed">0</span></p>
+    </div>
+    <h3>Modifica Classifica Globale</h3>
+    <div id="admin-leaderboard"></div>
+    <button id="admin-clear" class="game-button">Cancella Tutti i Punteggi</button>
+  </div>
+  
+  <script>
+    (function() {
+      /* ===============================
+         Gestione Leaderboard Globale tramite API
+         =============================== */
+      async function updateGlobalLeaderboard(name, score) {
+        try {
+          await fetch('/api/updateLeaderboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, score: score, timestamp: Date.now() })
+          });
+          console.log("Richiesta per aggiornare la leaderboard globale inviata.");
+        } catch (e) {
+          console.error("Errore aggiornando la leaderboard globale:", e);
+        }
+      }
+      
+      async function getGlobalLeaderboardData() {
+        try {
+          const response = await fetch('leaderboard.json');
+          return await response.json();
+        } catch (e) {
+          console.error("Errore leggendo la leaderboard globale:", e);
+          return [];
+        }
+      }
+      
+      async function renderGlobalLeaderboard() {
+        let leaderboard = await getGlobalLeaderboardData();
+        let content = "<table>";
+        content += "<tr><th>Rank</th><th>Nome</th><th>Punteggio</th><th>Azioni</th></tr>";
+        leaderboard.forEach((entry, index) => {
+          content += `<tr data-timestamp="${entry.timestamp}"><td>${index+1}</td><td>${entry.name}</td><td>${entry.score}</td>
+                      <td><button class="admin-delete" data-timestamp="${entry.timestamp}">Elimina</button></td></tr>`;
+        });
+        content += "</table>";
+        return content;
+      }
+      
+      async function deleteGlobalLeaderboardEntry(timestamp) {
+        try {
+          await fetch('/api/deleteLeaderboardEntry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timestamp: timestamp })
+          });
+          console.log("Entry eliminata dalla leaderboard globale.");
+        } catch (e) {
+          console.error("Errore eliminando l'entry globale:", e);
+        }
+      }
+      
+      async function clearGlobalLeaderboard() {
+        try {
+          await fetch('/api/clearLeaderboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          console.log("Leaderboard globale cancellata.");
+        } catch (e) {
+          console.error("Errore cancellando la leaderboard globale:", e);
+        }
+      }
+      /* ===============================
+         Fine gestione Leaderboard Globale
+         =============================== */
+      
+      // Dummy: Simulazione aggiornamento contatore partite
+      function updateGamePlayedCounter() {
+        console.log("Simulazione aggiornamento contatore partite.");
+      }
+      
+      /* ===============================
+         Variabili globali e logica di gioco
+         =============================== */
+      let score = 0, consecutiveCorrect = 0;
+      let gameActive = false;
+      const GAME_DURATION = 60000; // 60 secondi
+      let timerInterval, gameEndTime;
+      let gameDifficulty = "facile";
+      let trialMode = false;
+      let currentClef = "treble";
+      let currentDuration = "";
+      let lastDuration = "";
+      let isRest = false;
+      
+      const durationNames = {
+        "w": "Semibreve",
+        "h": "Minima",
+        "q": "Semiminima",
+        "8": "Croma",
+        "16": "Semicroma",
+        "32": "Biscroma",
+        "64": "Semibiscroma"
+      };
+      
+      function getAllowedDurations() {
+        if (gameDifficulty === "facile") return ["w", "h", "q"];
+        if (gameDifficulty === "medio") return ["w", "h", "q"];
+        if (gameDifficulty === "difficile") return ["w", "h", "q", "8", "16", "32", "64"];
+        if (gameDifficulty === "ultradifficile") return ["8", "16", "32", "64"];
+        return [];
+      }
+      
+      function shouldShuffleButtons() {
+        return (gameDifficulty === "medio" || gameDifficulty === "ultradifficile");
+      }
+      
+      function getScoringParameters() {
+        if (gameDifficulty === "facile") return { basePoints: 100, bonusFactor: 1 };
+        if (gameDifficulty === "medio") return { basePoints: 150, bonusFactor: 1.5 };
+        if (gameDifficulty === "difficile") return { basePoints: 200, bonusFactor: 2 };
+        if (gameDifficulty === "ultradifficile") return { basePoints: 250, bonusFactor: 2.5 };
+        return { basePoints: 100, bonusFactor: 1 };
+      }
+      
+      function shuffleArray(array) {
+        const newArray = array.slice();
+        for (let i = newArray.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+      }
+      
+      // VexFlow: disegna il pentagramma
+      const VF = Vex.Flow;
+      const notationDiv = document.getElementById("notation");
+      function drawNoteWithDuration(duration, clef, isRest) {
+        notationDiv.innerHTML = "";
+        const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
+        renderer.resize(220, 200);
+        const context = renderer.getContext();
+        const stave = new VF.Stave(10, 50, 200);
+        stave.addClef(clef).setContext(context).draw();
+        const finalDuration = isRest ? (duration + "r") : duration;
+        const key = "b/4";
+        const staveNote = new VF.StaveNote({ keys: [key], duration: finalDuration });
+        const voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+        voice.setStrict(false);
+        voice.addTickable(staveNote);
+        new VF.Formatter().joinVoices([voice]).format([voice], 100);
+        voice.draw(context, stave);
+      }
+      
+      function updateAnswerButtons() {
+        const container = document.querySelector(".answer-buttons");
+        container.innerHTML = "";
+        let buttonsArray = getAllowedDurations();
+        if (shouldShuffleButtons()) buttonsArray = shuffleArray(buttonsArray);
+        buttonsArray.forEach(duration => {
+          const button = document.createElement("button");
+          button.className = "answer-button";
+          button.setAttribute("data-duration", duration);
+          button.textContent = durationNames[duration];
+          button.addEventListener("click", function() {
+            const selectedDuration = this.getAttribute("data-duration");
+            if (selectedDuration === currentDuration) {
+              this.classList.add("flash-correct");
+              setTimeout(() => { this.classList.remove("flash-correct"); }, 1000);
+            } else {
+              this.classList.add("flash-wrong");
+              setTimeout(() => { this.classList.remove("flash-wrong"); }, 1000);
+            }
+            checkDurationAnswer(selectedDuration);
+          });
+          container.appendChild(button);
+        });
+      }
+      
+      function generateRandomDurationNote() {
+        const allowedDurations = getAllowedDurations();
+        isRest = (Math.random() < 0.2);
+        const randomIndex = Math.floor(Math.random() * allowedDurations.length);
+        currentDuration = allowedDurations[randomIndex];
+        if (!isRest && currentDuration === lastDuration) {
+          generateRandomDurationNote();
+          return;
+        }
+        drawNoteWithDuration(currentDuration, currentClef, isRest);
+        document.getElementById("result").textContent = "";
+        lastDuration = currentDuration;
+        updateAnswerButtons();
+      }
+      
+      function animateScore(finalScore) {
+        let displayed = parseInt(document.getElementById("scoreboard").textContent.replace("Punteggio: ", "")) || 0;
+        let start = displayed;
+        let change = finalScore - start;
+        let duration = 1000;
+        let startTime = null;
+        function animate(timestamp) {
+          if (!startTime) startTime = timestamp;
+          let progress = timestamp - startTime;
+          let currentValue = Math.round(start + (change * progress / duration));
+          document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+          if (progress < duration) {
+            requestAnimationFrame(animate);
+          } else {
+            document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+      function checkDurationAnswer(selectedDuration) {
+        if (!gameActive) return;
+        document.querySelectorAll(".answer-button").forEach(b => b.disabled = true);
+        const bonusIndicator = document.getElementById("bonus-indicator");
+        const { basePoints, bonusFactor } = getScoringParameters();
+        if (selectedDuration === currentDuration) {
+          consecutiveCorrect++;
+          let bonus = (consecutiveCorrect >= 3) ? Math.round(10 * (consecutiveCorrect - 2) * bonusFactor) : 0;
+          let pointsAwarded = basePoints + bonus;
+          score += pointsAwarded;
+          document.getElementById("result").innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+          if (consecutiveCorrect >= 10) {
+            bonusIndicator.classList.remove("bonus-active");
+            bonusIndicator.classList.add("rainbow");
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else if (consecutiveCorrect >= 3) {
+            bonusIndicator.classList.remove("rainbow");
+            bonusIndicator.classList.add("bonus-active");
+            bonusIndicator.textContent = "Bonus +" + bonus;
+          } else {
+            bonusIndicator.classList.remove("bonus-active", "rainbow");
+            bonusIndicator.textContent = "Bonus";
+          }
+          animateScore(score);
+          setTimeout(() => {
+            generateRandomDurationNote();
+            document.querySelectorAll(".answer-button").forEach(b => b.disabled = false);
+          }, 1000);
+        } else {
+          let penalty = Math.floor(score / 10);
+          score = Math.max(0, score - penalty);
+          consecutiveCorrect = 0;
+          bonusIndicator.classList.remove("bonus-active", "rainbow");
+          bonusIndicator.textContent = "Bonus";
+          document.getElementById("result").innerHTML = "<span style='color: red;'>Sbagliato! (-" + penalty + ")</span>";
+          animateScore(score);
+          setTimeout(() => {
+            document.querySelectorAll(".answer-button").forEach(b => b.disabled = false);
+          }, 1000);
+        }
+      }
+      
+      function startGlobalTimer(durationMs) {
+        const timerBar = document.getElementById("timer-bar");
+        timerBar.style.width = "100%";
+        gameEndTime = Date.now() + durationMs;
+        timerInterval = setInterval(() => {
+          let remaining = gameEndTime - Date.now();
+          let percent = remaining / durationMs;
+          if (percent < 0) percent = 0;
+          timerBar.style.width = (percent * 100) + "%";
+          if (remaining <= 15000) {
+            timerBar.classList.add("time-warning");
+          } else {
+            timerBar.classList.remove("time-warning");
+          }
+          if (remaining <= 0) {
+            clearInterval(timerInterval);
+            endGameDueToTime();
+          }
+        }, 100);
+      }
+      
+      function endGameDueToTime() {
+        gameActive = false;
+        document.getElementById("result").innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+        setTimeout(() => { finishGame(); }, 1500);
+      }
+      
+      async function finishGame() {
+        document.getElementById("game-panel").style.display = "none";
+        document.getElementById("config-panel").style.display = "block";
+        if (!trialMode) {
+          let playerName = document.getElementById("player-name").value.trim() || "giocatore";
+          // Invia il risultato globale per aggiornare il file JSON tramite GitHub Action
+          await updateGlobalLeaderboard(playerName, score);
+        }
+        score = 0;
+        consecutiveCorrect = 0;
+      }
+      
+      /* ===============================
+         Eventi di configurazione e interazione
+         =============================== */
+      document.getElementById("startGame").addEventListener("click", function() {
+        trialMode = false;
+        gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
+        let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
+        document.getElementById("player-name").value = playerNameInput;
+        currentClef = "treble";
+        score = 0;
+        consecutiveCorrect = 0;
+        document.getElementById("scoreboard").textContent = "Punteggio: 0";
+        document.getElementById("result").textContent = "";
+        document.getElementById("bonus-indicator").textContent = "Bonus";
+        document.getElementById("config-panel").style.display = "none";
+        document.getElementById("game-panel").style.display = "block";
+        gameActive = true;
+        updateGamePlayedCounter();
+        generateRandomDurationNote();
+        startGlobalTimer(GAME_DURATION);
+      });
+      
+      document.getElementById("start-trial").addEventListener("click", function() {
+        trialMode = true;
+        gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
+        let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
+        document.getElementById("player-name").value = playerNameInput;
+        document.getElementById("scoreboard").textContent = "Punteggio: 0";
+        document.getElementById("result").textContent = "";
+        document.getElementById("bonus-indicator").textContent = "Bonus";
+        document.getElementById("config-panel").style.display = "none";
+        document.getElementById("game-panel").style.display = "block";
+        gameActive = true;
+        generateRandomDurationNote();
+        startGlobalTimer(GAME_DURATION);
+      });
+      
+      document.getElementById("endGame").addEventListener("click", function() {
+        clearInterval(timerInterval);
+        gameActive = false;
+        document.getElementById("result").innerHTML = "<span>Gioco terminato! Punteggio finale: " + score + "</span>";
+        setTimeout(() => { finishGame(); }, 1500);
+      });
+      
+      // Toggle riferimento
+      const toggleReferenceButton = document.getElementById("toggleReference");
+      const referenceContainer = document.getElementById("referenceContainer");
+      toggleReferenceButton.addEventListener("click", function() {
+        if (referenceContainer.style.display === "none" || referenceContainer.style.display === "") {
+          referenceContainer.style.display = "block";
+          toggleReferenceButton.textContent = "Chiudi Riferimento";
+        } else {
+          referenceContainer.style.display = "none";
+          toggleReferenceButton.textContent = "Mostra Riferimento";
+        }
+      });
+      
+      document.getElementById("view-leaderboard").addEventListener("click", function() {
+        // Recupera e mostra la leaderboard globale
+        renderGlobalLeaderboard().then(content => {
+          document.getElementById("leaderboard-content").innerHTML = content;
+          document.getElementById("leaderboard-panel").style.display = "block";
+          setTimeout(() => { scrollToHighlighted(); }, 100);
+        });
+        document.getElementById("config-panel").style.display = "none";
+      });
+      
+      document.getElementById("close-leaderboard").addEventListener("click", function() {
+        document.getElementById("leaderboard-panel").style.display = "none";
+        document.getElementById("config-panel").style.display = "block";
+      });
+      
+      // Eventi Admin: eliminazione e cancellazione della leaderboard globale
+      document.addEventListener("click", async function(e) {
+        if (e.target && e.target.classList.contains("admin-delete")) {
+          let ts = e.target.getAttribute("data-timestamp");
+          await deleteGlobalLeaderboardEntry(ts);
+          document.getElementById("admin-leaderboard").innerHTML = await renderGlobalLeaderboard();
+        }
+      });
+      
+      const adminBtn = document.getElementById("admin-btn");
+      const adminLoginDiv = document.getElementById("admin-login");
+      const adminPanelDiv = document.getElementById("admin-panel");
+      const adminLoginBtn = document.getElementById("admin-login-btn");
+      const adminPasswordInput = document.getElementById("admin-password");
+      
+      adminBtn.addEventListener("click", function() {
+        adminLoginDiv.style.display = "block";
+        adminPasswordInput.focus();
+      });
+      
+      adminLoginBtn.addEventListener("click", function() {
+        const pass = adminPasswordInput.value;
+        if (pass === "admin123") {
+          adminLoginDiv.style.display = "none";
+          adminPanelDiv.style.display = "block";
+          renderGlobalLeaderboard().then(content => {
+            document.getElementById("admin-leaderboard").innerHTML = content;
+          });
+        } else {
+          alert("Password errata!");
+        }
+        adminPasswordInput.value = "";
+      });
+      
+      adminPasswordInput.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          adminLoginBtn.click();
+        }
+      });
+      
+      document.getElementById("admin-clear").addEventListener("click", async function() {
+        if (confirm("Sei sicuro di voler cancellare tutta la classifica globale?")) {
+          await clearGlobalLeaderboard();
+          document.getElementById("admin-leaderboard").innerHTML = await renderGlobalLeaderboard();
+        }
+      });
+      
+      function scrollToHighlighted() {
+        const container = document.getElementById("leaderboard-content");
+        const highlightedRow = container.querySelector(".highlight");
+        if (!highlightedRow) return;
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+        const targetScroll = highlightedRow.offsetTop - (container.clientHeight / 2) + (highlightedRow.clientHeight / 2);
+        const startScroll = container.scrollTop;
+        const distance = targetScroll - startScroll;
+        const duration = 1500;
+        const startTime = performance.now();
+        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+        function animate(currentTime) {
+          const elapsed = currentTime - startTime;
+          const t = Math.min(elapsed / duration, 1);
+          const easedT = easeOutCubic(t);
+          container.scrollTop = startScroll + distance * easedT;
+          if (t < 1) { requestAnimationFrame(animate); }
+        }
+        requestAnimationFrame(animate);
+      }
+      
+    })();
+  </script>
+</body>
+</html>
