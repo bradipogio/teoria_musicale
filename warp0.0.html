@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione e Loop del Sample (Semplice)</title>
+  <title>Registrazione, Loop e Attivazione Microfono</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -12,6 +12,7 @@
       background: #f5f5f5;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
     /* Stile dei pulsanti ispirato al tuo esempio */
     .game-button {
@@ -55,30 +56,58 @@
     input[type="range"] {
       margin: 10px;
     }
+    /* Modal overlay per la richiesta del microfono */
+    #microphonePrompt {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #microphonePromptContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+    }
   </style>
 </head>
 <body>
+  <!-- Modal per richiedere l'attivazione del microfono -->
+  <div id="microphonePrompt">
+    <div id="microphonePromptContent">
+      <h2>Attivazione Microfono</h2>
+      <p>Questa pagina richiede l'accesso al microfono.<br>Clicca "Attiva Microfono" per continuare.</p>
+      <button id="activateMic" class="game-button">Attiva Microfono</button>
+    </div>
+  </div>
+
+  <!-- Contenuto della pagina -->
   <h1>Registrazione e Loop del Sample</h1>
-  
   <div>
-    <button id="recordButton" class="game-button">Inizia Registrazione</button>
+    <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
     <button id="stopButton" class="game-button" disabled>Ferma Registrazione</button>
     <button id="playButton" class="game-button" disabled>Play</button>
     <button id="loopButton" class="game-button" disabled>Loop</button>
   </div>
-  
   <div>
     <label for="rateSlider">Velocità di Riproduzione:</label>
     <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
     <span id="rateValue">1</span>x
   </div>
-  
   <div id="waveform">
     <canvas id="canvas" width="600" height="150"></canvas>
     <div id="selection"></div>
   </div>
-  
+
   <script>
+    // Variabili globali
     let mediaRecorder;
     let audioChunks = [];
     let audioBuffer = null;
@@ -86,22 +115,37 @@
     let source = null;
     let recordedBlob = null;
     let selection = {start: null, end: null};
-    
+
+    // Riferimenti agli elementi
     const recordButton = document.getElementById('recordButton');
-    const stopButton   = document.getElementById('stopButton');
-    const playButton   = document.getElementById('playButton');
-    const loopButton   = document.getElementById('loopButton');
-    const rateSlider   = document.getElementById('rateSlider');
-    const rateValue    = document.getElementById('rateValue');
-    
+    const stopButton = document.getElementById('stopButton');
+    const playButton = document.getElementById('playButton');
+    const loopButton = document.getElementById('loopButton');
+    const rateSlider = document.getElementById('rateSlider');
+    const rateValue = document.getElementById('rateValue');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const selectionDiv = document.getElementById('selection');
-    
+
     let isDragging = false;
     let dragStartX = null;
-    
-    // Avvia la registrazione (questo attiverà il prompt per il microfono)
+
+    // Modal per attivare il microfono
+    document.getElementById('activateMic').addEventListener('click', async () => {
+      try {
+        // Richiede il permesso al microfono (questo mostra il prompt)
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("Microfono attivato:", stream);
+        // Nasconde il modal e abilita il pulsante di registrazione
+        document.getElementById('microphonePrompt').style.display = 'none';
+        recordButton.disabled = false;
+      } catch (err) {
+        console.error("Accesso al microfono negato:", err);
+        alert("Accesso al microfono non consentito. Clicca su 'Consenti' quando richiesto.");
+      }
+    });
+
+    // Avvia la registrazione
     recordButton.addEventListener('click', async () => {
       // Reset dati precedenti
       audioChunks = [];
@@ -112,10 +156,9 @@
       selection = {start: null, end: null};
       selectionDiv.style.display = 'none';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       try {
-        // Chiede il permesso per usare il microfono.
-        // Se l'utente non ha ancora risposto, apparirà il prompt di autorizzazione.
+        // Richiede nuovamente il flusso audio (in caso servisse)
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = event => {
@@ -140,11 +183,10 @@
         recordButton.disabled = true;
         stopButton.disabled = false;
       } catch (err) {
-        alert("Accesso al microfono non consentito. Per favore, clicca su 'Consenti' quando richiesto.");
-        console.error(err);
+        console.error("Errore durante la registrazione:", err);
       }
     });
-    
+
     // Ferma la registrazione
     stopButton.addEventListener('click', () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -153,15 +195,14 @@
         stopButton.disabled = true;
       }
     });
-    
-    // Disegna una forma d'onda semplificata
+
+    // Funzione per disegnare una forma d'onda semplificata sul canvas
     function drawWaveform() {
       if (!audioBuffer) return;
-      const rawData = audioBuffer.getChannelData(0); // utilizziamo il primo canale
-      const samples = canvas.width; // un campione per pixel
+      const rawData = audioBuffer.getChannelData(0);
+      const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
       const filteredData = [];
-      
       for (let i = 0; i < samples; i++) {
         let sum = 0;
         for (let j = 0; j < blockSize; j++) {
@@ -169,20 +210,17 @@
         }
         filteredData.push(sum / blockSize);
       }
-      
-      // Pulisce il canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#007bff';
       const middle = canvas.height / 2;
-      
       for (let i = 0; i < samples; i++) {
         const x = i;
         const y = filteredData[i] * canvas.height;
         ctx.fillRect(x, middle - y/2, 1, y);
       }
     }
-    
-    // Gestione eventi del mouse sul canvas per la selezione
+
+    // Gestione eventi del mouse per la selezione sul canvas
     canvas.addEventListener('mousedown', (e) => {
       isDragging = true;
       const rect = canvas.getBoundingClientRect();
@@ -191,7 +229,7 @@
       selection.end = dragStartX;
       updateSelectionDiv();
     });
-    
+
     canvas.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       const rect = canvas.getBoundingClientRect();
@@ -199,14 +237,14 @@
       selection.end = currentX;
       updateSelectionDiv();
     });
-    
+
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
       if (selection.start > selection.end) {
         [selection.start, selection.end] = [selection.end, selection.start];
       }
     });
-    
+
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
@@ -214,17 +252,17 @@
       selectionDiv.style.left = x + 'px';
       selectionDiv.style.width = width + 'px';
     }
-    
-    // Aggiornamento velocità di riproduzione
+
+    // Aggiornamento della velocità di riproduzione
     rateSlider.addEventListener('input', () => {
       rateValue.textContent = rateSlider.value;
     });
-    
+
     // Riproduce l'intero sample una volta
     playButton.addEventListener('click', () => {
       if (!audioBuffer) return;
       if (source) { 
-        try { source.stop(); } catch(e) { /* ignora */ }
+        try { source.stop(); } catch(e) { }
       }
       source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
@@ -232,7 +270,7 @@
       source.connect(audioCtx.destination);
       source.start();
     });
-    
+
     // Riproduce in loop la parte selezionata
     loopButton.addEventListener('click', () => {
       if (!audioBuffer) return;
@@ -240,16 +278,13 @@
         alert("Seleziona un'area trascinando sul waveform.");
         return;
       }
-      // Calcola il tempo della selezione in base alla larghezza del canvas
       const loopStartRatio = Math.min(selection.start, selection.end) / canvas.width;
-      const loopEndRatio   = Math.max(selection.start, selection.end) / canvas.width;
+      const loopEndRatio = Math.max(selection.start, selection.end) / canvas.width;
       const loopStart = loopStartRatio * audioBuffer.duration;
-      const loopEnd   = loopEndRatio * audioBuffer.duration;
-      
+      const loopEnd = loopEndRatio * audioBuffer.duration;
       if (source) { 
-        try { source.stop(); } catch(e) { /* ignora */ }
+        try { source.stop(); } catch(e) { }
       }
-      
       source = audioCtx.createBufferSource();
       source.buffer = audioBuffer;
       source.playbackRate.value = parseFloat(rateSlider.value);
