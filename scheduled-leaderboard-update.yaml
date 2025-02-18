@@ -1,0 +1,40 @@
+name: Scheduled Leaderboard Update
+
+on:
+  schedule:
+    # Questo trigger esegue il workflow ogni 5 minuti
+    - cron: '*/5 * * * *'
+  # Puoi aggiungere anche un trigger manuale, se vuoi
+  workflow_dispatch:
+
+jobs:
+  update-leaderboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+
+      - name: Run update leaderboard script
+        env:
+          # Qui puoi impostare NEW_RESULT se vuoi simulare un aggiornamento,
+          # oppure lo script può raccogliere i dati da una fonte temporanea
+          NEW_RESULT: '{"name": "Esempio", "score": 1000, "timestamp": '$(date +%s)' }'
+        run: |
+          node update-leaderboard.js
+
+      - name: Commit changes if any
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add leaderboard.json
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica da committare."
+          else
+            git commit -m "Aggiornamento leaderboard"
+            git push
+          fi
