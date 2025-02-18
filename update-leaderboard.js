@@ -28,7 +28,10 @@ if (fs.existsSync(filePath)) {
   }
 }
 
+// Aggiungi il nuovo risultato
 leaderboard.push(newResult);
+
+// Ordina per punteggio decrescente
 leaderboard.sort((a, b) => b.score - a.score);
 
 fs.writeFileSync(filePath, JSON.stringify(leaderboard, null, 2), 'utf8');
