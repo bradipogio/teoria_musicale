@@ -391,18 +391,7 @@
       /* ===============================
          Gestione Leaderboard Globale tramite API
          =============================== */
-      async function updateGlobalLeaderboard(name, score) {
-        try {
-          await fetch('/api/updateLeaderboard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name, score: score, timestamp: Date.now() })
-          });
-          console.log("Richiesta per aggiornare la leaderboard globale inviata.");
-        } catch (e) {
-          console.error("Errore aggiornando la leaderboard globale:", e);
-        }
-      }
+
       
       async function getGlobalLeaderboardData() {
         try {
