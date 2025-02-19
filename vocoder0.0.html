@@ -2,19 +2,17 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Live Vocoder con Pitch Shift</title>
+  <title>Live Vocoder con Sicurezza Audio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Includi Tone.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
-    /* Mantenuto lo stile del precedente HTML */
     body {
       font-family: 'Roboto', sans-serif;
       background: #f5f5f5;
       text-align: center;
       padding: 20px;
-      margin: 0;
     }
     h1 {
       margin-bottom: 20px;
@@ -37,54 +35,98 @@
       width: 300px;
       margin: 20px;
     }
+    #warningBanner {
+      display: none;
+      background: #ff4d4d;
+      color: #fff;
+      padding: 10px;
+      margin: 10px auto;
+      width: 80%;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-  <h1>Live Vocoder Voice Changer</h1>
-  <p>Trasforma la tua voce live con il microfono.</p>
+  <h1>Live Vocoder con Sicurezza Audio</h1>
+  <p>Trasforma la tua voce live con il microfono. Usa le cuffie per proteggere le casse e l'udito.</p>
+  <div id="warningBanner">ATTENZIONE: Le cuffie non sono collegate!</div>
   <button id="startButton" class="game-button">Attiva Microfono</button>
   <div>
     <label for="pitchSlider">Pitch Shift: <span id="pitchValue">0</span> semitoni</label><br>
     <input type="range" id="pitchSlider" min="-12" max="12" step="0.1" value="0">
   </div>
   <script>
-    // Inizializza Tone.js
-    let mic, pitchShift;
-    document.getElementById('startButton').addEventListener('click', async () => {
-      // Avvia l'AudioContext
-      await Tone.start();
-      console.log("Audio context avviato");
-
-      // Crea l'oggetto per il microfono
-      mic = new Tone.UserMedia();
-
-      // Crea il nodo PitchShift: il parametro iniziale è 0 semitoni (nessuna modifica)
-      pitchShift = new Tone.PitchShift(0).toDestination();
-
-      // Collega il microfono al nodo di pitch shifting
-      mic.connect(pitchShift);
-
-      // Richiedi l'accesso al microfono
+    // Crea un AudioContext e avvia Tone.js
+    const audioCtx = Tone.context;
+    let mic, pitchShift, compressor;
+    
+    // Configura un DynamicsCompressorNode come limiter
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = -20;
+    compressor.knee.value = 30;
+    compressor.ratio.value = 12;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    // Collega il compressor all'uscita
+    compressor.connect(audioCtx.destination);
+    
+    // Crea il nodo PitchShift e collegalo al compressor
+    pitchShift = new Tone.PitchShift(0);
+    pitchShift.connect(compressor);
+    
+    // Funzione per regolare il pitch
+    function setPitch(semitones) {
+      document.getElementById("pitchValue").textContent = semitones;
+      pitchShift.pitch = semitones;
+    }
+    
+    // Gestione dello slider
+    const pitchSlider = document.getElementById("pitchSlider");
+    pitchSlider.addEventListener("input", () => {
+      setPitch(parseFloat(pitchSlider.value));
+    });
+    
+    // Rilevamento cuffie (approccio sperimentale)
+    async function checkHeadphones() {
+      if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputs = devices.filter(device => device.kind === "audiooutput");
+        // Controlla se almeno uno dei dispositivi contiene "headphone" (in minuscolo)
+        const headphones = outputs.find(device => device.label.toLowerCase().includes("headphone"));
+        if(!headphones) {
+          document.getElementById("warningBanner").style.display = "block";
+          // Puoi sospendere l'audio se vuoi:
+          // audioCtx.suspend();
+        } else {
+          document.getElementById("warningBanner").style.display = "none";
+          // audioCtx.resume();
+        }
+      }
+    }
+    
+    // Gestisci l'evento di cambio dispositivo
+    if(navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener('devicechange', checkHeadphones);
+    }
+    
+    // Avvia il microfono e collega il flusso
+    document.getElementById("startButton").addEventListener("click", async () => {
       try {
+        // Riattiva il contesto in risposta a un'interazione utente
+        await Tone.start();
+        // Crea un oggetto UserMedia per il microfono
+        mic = new Tone.UserMedia();
+        // Collega il microfono al nodo PitchShift
+        mic.connect(pitchShift);
         await mic.open();
-        console.log("Microfono aperto");
+        console.log("Microfono attivato");
+        // Controlla i dispositivi di output
+        checkHeadphones();
       } catch (err) {
         console.error("Errore nell'apertura del microfono:", err);
         alert("Non è possibile accedere al microfono.");
       }
     });
-
-    // Slider per regolare il pitch shift
-    const pitchSlider = document.getElementById('pitchSlider');
-    const pitchValueDisplay = document.getElementById('pitchValue');
-    pitchSlider.addEventListener('input', () => {
-      const semitones = parseFloat(pitchSlider.value);
-      pitchValueDisplay.textContent = semitones;
-      if(pitchShift) {
-        pitchShift.pitch = semitones; // Imposta il pitch in semitoni
-      }
-    });
   </script>
 </body>
 </html>
-
