@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per il microfono -->
+  <!-- Modal per attivare il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -222,6 +222,21 @@
       }
     }
 
+    /********** FUNZIONE getSupportedMimeType **********/
+    function getSupportedMimeType() {
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        return 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        return 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        return 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+        return 'audio/wav';
+      } else {
+        return '';
+      }
+    }
+
     /********** RIFERIMENTI ELEMENTI **********/
     const activateMicBtn = document.getElementById('activateMic');
     const microphonePrompt = document.getElementById('microphonePrompt');
@@ -243,7 +258,7 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: 0, end: canvas.width }; // Intera area
+    let selection = { start: 0, end: canvas.width };
 
     /********** FUNZIONE updateSelectionDiv **********/
     function updateSelectionDiv() {
@@ -337,7 +352,7 @@
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
       }
-      // Resetta il vecchio sample
+      // Reset del vecchio sample
       audioBuffer = null;
       activeChordOffsets = [];
       clearKeyboardActive();
@@ -357,7 +372,9 @@
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           currentStream = stream;
           startLiveVisualization(stream);
-          mediaRecorder = new MediaRecorder(stream);
+          // Seleziona il MIME type supportato
+          const mimeType = getSupportedMimeType();
+          mediaRecorder = new MediaRecorder(stream, { mimeType });
           mediaRecorder.ondataavailable = event => {
             if(event.data.size > 0) {
               audioChunks.push(event.data);
@@ -366,11 +383,11 @@
           };
           mediaRecorder.onstop = () => {
             stopLiveVisualization();
-            recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
+            recordedBlob = new Blob(audioChunks, { type: mimeType });
             const reader = new FileReader();
             reader.onload = function() {
               audioCtx.decodeAudioData(reader.result, buffer => {
-                // Applica il fade in/out per evitare click
+                // Applica fade in/out per evitare click ai bordi
                 for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
                   let channelData = buffer.getChannelData(channel);
                   applyFade(channelData, buffer.sampleRate, 0.05);
@@ -430,14 +447,18 @@
       }
     }
 
-    /********** FUNZIONE applyFade **********/
-    function applyFade(channelData, sampleRate, fadeDuration = 0.05) {
-      const fadeSamples = Math.floor(sampleRate * fadeDuration);
-      for (let i = 0; i < fadeSamples; i++) {
-        channelData[i] *= i / fadeSamples;
-      }
-      for (let i = 0; i < fadeSamples; i++) {
-        channelData[channelData.length - fadeSamples + i] *= (fadeSamples - i) / fadeSamples;
+    /********** FUNZIONE getSupportedMimeType **********/
+    function getSupportedMimeType() {
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        return 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        return 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        return 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+        return 'audio/wav';
+      } else {
+        return '';
       }
     }
 
@@ -596,6 +617,7 @@
     }
 
     /********** GESTIONE TASTIERA **********/
+    // Mappe per i tasti
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -614,7 +636,7 @@
       { note: 'B', type: 'white' }
     ];
 
-    const numOctaves = 2;
+    const numOctaves = 1;
     const containerWidth = keyboard.clientWidth;
     const totalWhiteKeys = numOctaves * 7;
     const whiteKeyWidth = containerWidth / totalWhiteKeys;
@@ -641,7 +663,7 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // I tasti bianchi si comportano come i neri: clic per toggle l'offset
+            // I tasti bianchi si comportano esattamente come i tasti neri: toggle dell'offset
             const offset = whiteMapping[noteObj.note];
             if(key.classList.contains("active")){
               key.classList.remove("active");
