@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop, Live Waveform e Piano Pitch-Shift</title>
+  <title>Registrazione, Loop, Live Waveform e Piano Pitch-Shift (Beta)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -39,7 +39,7 @@
       50% { border-color: #000; }
       100% { border-color: #fff; }
     }
-    /* Bottone Play/Pausa (verde) */
+    /* Bottone Play/Pausa (verde) e Loop */
     #playPauseButton {
       background: #28a745;
       color: #fff;
@@ -66,14 +66,14 @@
       width: 600px;
       height: 150px;
     }
-    /* Selezione loop e handle */
+    /* Selezione loop con handle */
     #selection {
       position: absolute;
       top: 0;
       height: 100%;
       background: rgba(0,123,255,0.3);
       pointer-events: none;
-      display: none;
+      display: block;
     }
     .handle {
       position: absolute;
@@ -198,9 +198,11 @@
     let isPlaying = false;
     // Loop ON di default
     let isLoopMode = true;
-    let activeChordOffsets = [];  // array degli offset attivi (in semitoni) per il pitch shift
-    let sourceNodes = [];         // array dei BufferSource per la riproduzione
-    let selectedRoot = null;      // Nota root selezionata (es. "C4")
+    let activeChordOffsets = [];  // offset attivi (in semitoni) per il pitch shift
+    let sourceNodes = [];         // BufferSource per la riproduzione
+    let selectedRoot = null;      // Nota root (es. "C4")
+    // Variabile per evitare aggiornamenti ripetuti del playback
+    let updatingPlayback = false;
 
     // Per live visualization
     let liveAnalyser = null;
@@ -223,8 +225,12 @@
     const keyboard = document.getElementById('keyboard');
 
     let isDragging = false;
+    let draggingLeft = false;
+    let draggingRight = false;
+    let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: null, end: null };
+    // Inizialmente l'intera area è selezionata
+    let selection = { start: 0, end: canvas.width };
 
     /********** PERMESSO MICROFONO **********/
     if(navigator.permissions) {
@@ -238,6 +244,7 @@
     activateMicBtn.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        await audioCtx.resume();
         console.log("Microfono attivato:", stream);
         microphonePrompt.style.display = "none";
         recordButton.disabled = false;
@@ -278,7 +285,7 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se si inizia una nuova registrazione, fermare eventuale riproduzione e resettare tutto
+      // Se inizia una nuova registrazione, ferma eventuale riproduzione e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -296,8 +303,10 @@
         recordedBlob = null;
         playPauseButton.disabled = true;
         loopButton.disabled = true;
-        selection = { start: null, end: null };
-        selectionDiv.style.display = "none";
+        // Selezione iniziale: tutta l'area
+        selection.start = 0;
+        selection.end = canvas.width;
+        updateSelectionDiv();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -367,89 +376,45 @@
     }
 
     /********** SELEZIONE LOOP CON HANDLE **********/
-    // Consenti di trascinare l'intera selezione o i bordi
-    let draggingSelection = false;
-    let draggingLeft = false;
-    let draggingRight = false;
-    let selectionRect = { start: 0, end: 0 }; // in px
-
-    // Eventi sul canvas per la selezione base (clic e trascina per creare la selezione)
     canvas.addEventListener('mousedown', (e) => {
-      // Se clicchiamo sui handle non facciamo la normale selezione
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
-      if(clickX >= parseFloat(selectionDiv.style.left) &&
-         clickX <= parseFloat(selectionDiv.style.left) + parseFloat(selectionDiv.style.width)) {
-        // Se clicchiamo dentro la selezione, potremmo voler spostare l'intera selezione
+      const selLeft = parseFloat(selectionDiv.style.left) || 0;
+      const selWidth = parseFloat(selectionDiv.style.width) || canvas.width;
+      // Se clicco dentro la selezione, sposta tutta
+      if(clickX >= selLeft && clickX <= selLeft + selWidth) {
         draggingSelection = true;
+        dragStartX = clickX;
       } else {
-        // Altrimenti, iniziamo una nuova selezione
         draggingSelection = false;
         selection.start = clickX;
         selection.end = clickX;
-        updateSelectionDiv();
       }
       isDragging = true;
+      updateSelectionDiv();
     });
     canvas.addEventListener('mousemove', (e) => {
       if(!isDragging) return;
       const rect = canvas.getBoundingClientRect();
       const currentX = e.clientX - rect.left;
-      if(draggingLeft) {
-        // Trascina solo il bordo sinistro
-        selection.start = currentX;
-      } else if(draggingRight) {
-        // Trascina solo il bordo destro
-        selection.end = currentX;
-      } else if(draggingSelection) {
-        // Sposta l'intera selezione mantenendo la stessa larghezza
-        const width = Math.abs(selection.end - selection.start);
-        let newStart = currentX - width/2;
-        let newEnd = currentX + width/2;
-        // Limitiamo al canvas
-        newStart = Math.max(0, newStart);
-        newEnd = Math.min(canvas.width, newEnd);
-        selection.start = newStart;
-        selection.end = newEnd;
+      if(draggingSelection) {
+        const delta = currentX - dragStartX;
+        selection.start = Math.max(0, selection.start + delta);
+        selection.end = Math.min(canvas.width, selection.end + delta);
+        dragStartX = currentX;
       } else {
-        // Disegna nuova selezione
         selection.end = currentX;
       }
       updateSelectionDiv();
     });
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
-      draggingLeft = false;
-      draggingRight = false;
       draggingSelection = false;
-      // Assicura che start sia minore di end
       if(selection.start > selection.end) {
         [selection.start, selection.end] = [selection.end, selection.start];
       }
       updateSelectionDiv();
     });
-
-    // Crea handle (se non esistono già) e aggiungi listener per trascinarli
-    function updateSelectionDiv() {
-      const x = Math.min(selection.start, selection.end);
-      const width = Math.abs(selection.end - selection.start);
-      selectionDiv.style.display = "block";
-      selectionDiv.style.left = x + "px";
-      selectionDiv.style.width = width + "px";
-      // Se in loop, aggiorna i source
-      if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
-        const loopStartRatio = x / canvas.width;
-        const loopEndRatio = (x + width) / canvas.width;
-        sourceNodes.forEach(src => {
-          src.loopStart = loopStartRatio * audioBuffer.duration;
-          src.loopEnd = loopEndRatio * audioBuffer.duration;
-        });
-      }
-      // Aggiorna handle
-      leftHandle.style.left = "0px";
-      rightHandle.style.right = "0px";
-    }
-    // Listener per gli handle
     leftHandle.addEventListener("mousedown", (e) => {
       e.stopPropagation();
       draggingLeft = true;
@@ -457,6 +422,25 @@
     rightHandle.addEventListener("mousedown", (e) => {
       e.stopPropagation();
       draggingRight = true;
+    });
+    document.addEventListener("mousemove", (e) => {
+      if(draggingLeft || draggingRight) {
+        const rect = canvas.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        if(draggingLeft) {
+          selection.start = Math.max(0, currentX);
+          if(selection.start > selection.end) selection.start = selection.end;
+        }
+        if(draggingRight) {
+          selection.end = Math.min(canvas.width, currentX);
+          if(selection.end < selection.start) selection.end = selection.start;
+        }
+        updateSelectionDiv();
+      }
+    });
+    document.addEventListener("mouseup", () => {
+      draggingLeft = false;
+      draggingRight = false;
     });
 
     /********** PLAY/PAUSA E LOOP **********/
@@ -488,7 +472,14 @@
       }
       loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
     });
-    // In startPlayback, se il loop è attivo, avvia il source dal loopStart
+    function stopPlaybackAndRestart() {
+      if(updatingPlayback) return;
+      updatingPlayback = true;
+      sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
+      sourceNodes = [];
+      if(isPlaying) startPlayback();
+      updatingPlayback = false;
+    }
     function startPlayback() {
       sourceNodes = [];
       const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
@@ -496,7 +487,6 @@
       let loopStartTime = 0;
       if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
         const x = Math.min(selection.start, selection.end);
-        const width = Math.abs(selection.end - selection.start);
         const loopStartRatio = x / canvas.width;
         loopStartTime = loopStartRatio * audioBuffer.duration;
       }
@@ -529,28 +519,17 @@
         };
         sourceNodes.push(src);
       }
-      // Se loop è attivo, fai partire la riproduzione dal loopStart
       if(isLoopMode) {
         sourceNodes.forEach(src => src.start(0, loopStartTime));
       } else {
         sourceNodes.forEach(src => src.start());
       }
     }
-    function stopPlaybackAndRestart() {
-      sourceNodes.forEach(src => {
-        try { src.stop(); } catch(e){ }
-      });
-      sourceNodes = [];
-      if(isPlaying) startPlayback();
-    }
 
     /********** GESTIONE TASTIERA **********/
-    // Funzione helper per ottenere il valore pitch (0-11)
-    function getPitch(noteStr) {
-      const mapping = { "C":0, "C#":1, "D":2, "D#":3, "E":4, "F":5, "F#":6, "G":7, "G#":8, "A":9, "A#":10, "B":11 };
-      return mapping[noteStr];
-    }
-    // Genera la tastiera in 2 ottave
+    const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
+    const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
+
     const octaveNotes = [
       { note: 'C', type: 'white' },
       { note: 'C#', type: 'black' },
@@ -565,8 +544,6 @@
       { note: 'A#', type: 'black' },
       { note: 'B', type: 'white' }
     ];
-    const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
-    const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
     const numOctaves = 2;
     const containerWidth = keyboard.clientWidth;
@@ -584,7 +561,6 @@
           let key = document.createElement("div");
           key.classList.add("white-key");
           key.dataset.note = fullNote;
-          // Per i tasti bianchi, se vengono cliccati con SHIFT, calcola l'offset rispetto al root
           key.setAttribute("data-offset", whiteMapping[noteObj.note]);
           key.style.width = whiteKeyWidth + "px";
           key.style.height = whiteKeyHeight + "px";
@@ -597,15 +573,12 @@
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
             if(e.shiftKey) {
-              // Se SHIFT è premuto, e se un root è già selezionato, calcola la differenza
               if(selectedRoot && selectedRoot !== key.dataset.note) {
                 let rootLetter = selectedRoot.replace(/\d+/,"");
                 let currentLetter = noteObj.note;
-                let diff = getPitch(currentLetter) - getPitch(rootLetter);
-                // Regola per avere intervalli compresi in -6 ... +6
+                let diff = whiteMapping[currentLetter] - whiteMapping[rootLetter];
                 if(diff > 6) diff -= 12;
                 if(diff < -6) diff += 12;
-                // Toggle active per il pitch shift
                 if(key.classList.contains("active")){
                   key.classList.remove("active");
                   activeChordOffsets = activeChordOffsets.filter(o => o !== diff);
@@ -614,7 +587,6 @@
                   activeChordOffsets.push(diff);
                 }
               } else {
-                // Se non c'è un root, imposta questo tasto come root e non applica offset
                 clearKeyboardActive();
                 key.classList.add("active");
                 selectedRoot = key.dataset.note;
@@ -622,7 +594,6 @@
               }
               if(isPlaying) stopPlaybackAndRestart();
             } else {
-              // Click senza SHIFT: imposta il tasto come root e rimuove pitch shift
               clearKeyboardActive();
               key.classList.add("active");
               selectedRoot = key.dataset.note;
@@ -660,93 +631,6 @@
       const keys = keyboard.querySelectorAll(".white-key, .black-key");
       keys.forEach(k => k.classList.remove("active"));
     }
-    function stopPlaybackAndRestart() {
-      sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
-      sourceNodes = [];
-      if(isPlaying) startPlayback();
-    }
-    // Helper per i tasti: calcola il pitch (0-11) da una nota (es. "C" o "D#")
-    function getPitch(noteStr) {
-      const mapping = { "C":0, "C#":1, "D":2, "D#":3, "E":4, "F":5, "F#":6, "G":7, "G#":8, "A":9, "A#":10, "B":11 };
-      return mapping[noteStr];
-    }
-
-    /********** PLAYBACK **********/
-    rateSlider.addEventListener('input', () => {
-      rateValue.textContent = rateSlider.value;
-      if(sourceNodes.length > 0) {
-        sourceNodes.forEach(src => {
-          src.playbackRate.value = parseFloat(rateSlider.value);
-        });
-      }
-    });
-    playPauseButton.addEventListener('click', async () => {
-      if(!audioBuffer) return;
-      if(!isPlaying) {
-        if(audioCtx.state === "suspended") await audioCtx.resume();
-        if(sourceNodes.length === 0) startPlayback();
-        isPlaying = true;
-        playPauseButton.textContent = "Pausa";
-      } else {
-        await audioCtx.suspend();
-        isPlaying = false;
-        playPauseButton.textContent = "Play";
-      }
-    });
-    loopButton.addEventListener('click', () => {
-      isLoopMode = !isLoopMode;
-      if(sourceNodes.length > 0) {
-        sourceNodes.forEach(src => src.loop = isLoopMode);
-      }
-      loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
-    });
-    // In startPlayback(), se loop è attivo, avvia dal punto di inizio dell'area selezionata
-    function startPlayback() {
-      sourceNodes = [];
-      const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
-      const voiceGain = 1 / numVoices;
-      let loopStartTime = 0;
-      if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
-        const x = Math.min(selection.start, selection.end);
-        const loopStartRatio = x / canvas.width;
-        loopStartTime = loopStartRatio * audioBuffer.duration;
-      }
-      for(let i = 0; i < numVoices; i++){
-        let src = audioCtx.createBufferSource();
-        src.buffer = audioBuffer;
-        src.playbackRate.value = parseFloat(rateSlider.value);
-        if(activeChordOffsets.length > 0) {
-          const offset = activeChordOffsets[i];
-          src.detune.value = offset * 100;
-        }
-        src.loop = isLoopMode;
-        if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
-          const x = Math.min(selection.start, selection.end);
-          const width = Math.abs(selection.end - selection.start);
-          const loopStartRatio = x / canvas.width;
-          const loopEndRatio = (x + width) / canvas.width;
-          src.loopStart = loopStartRatio * audioBuffer.duration;
-          src.loopEnd = loopEndRatio * audioBuffer.duration;
-        }
-        let gainNode = audioCtx.createGain();
-        gainNode.gain.value = voiceGain;
-        src.connect(gainNode).connect(audioCtx.destination);
-        src.onended = () => {
-          if(!isLoopMode) {
-            isPlaying = false;
-            playPauseButton.textContent = "Play";
-            sourceNodes = [];
-          }
-        };
-        sourceNodes.push(src);
-      }
-      if(isLoopMode) {
-        sourceNodes.forEach(src => src.start(0, loopStartTime));
-      } else {
-        sourceNodes.forEach(src => src.start());
-      }
-    }
-
   </script>
 </body>
 </html>
