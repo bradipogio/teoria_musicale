@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop e Attivazione Microfono</title>
+  <title>Registrazione, Loop Dinamico e Play/Pausa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
       padding: 20px;
       margin: 0;
     }
-    /* Stile dei pulsanti ispirato al tuo esempio */
+    /* Pulsanti in stile game-button */
     .game-button {
       padding: 10px 20px;
       font-size: 16px;
@@ -52,18 +52,18 @@
       pointer-events: none;
       display: none;
     }
-    /* Stili per lo slider */
+    /* Stile per lo slider */
     input[type="range"] {
       margin: 10px;
     }
-    /* Modal overlay per la richiesta del microfono */
+    /* Modal per richiesta attivazione microfono */
     #microphonePrompt {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0,0,0,0.5);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -79,7 +79,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per richiedere l'attivazione del microfono -->
+  <!-- Modal per attivare il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -88,13 +88,16 @@
     </div>
   </div>
 
-  <!-- Contenuto della pagina -->
-  <h1>Registrazione e Loop del Sample</h1>
+  <!-- Contenuto principale -->
+  <h1>Registrazione e Loop Dinamico</h1>
   <div>
+    <!-- I pulsanti saranno abilitati dopo l'attivazione del microfono -->
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
     <button id="stopButton" class="game-button" disabled>Ferma Registrazione</button>
-    <button id="playButton" class="game-button" disabled>Play</button>
-    <button id="loopButton" class="game-button" disabled>Loop</button>
+  </div>
+  <div>
+    <button id="playPauseButton" class="game-button" disabled>Play</button>
+    <button id="loopButton" class="game-button" disabled>Loop OFF</button>
   </div>
   <div>
     <label for="rateSlider">Velocità di Riproduzione:</label>
@@ -111,15 +114,20 @@
     let mediaRecorder;
     let audioChunks = [];
     let audioBuffer = null;
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let source = null;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let source = null;  // L'AudioBufferSourceNode in riproduzione
     let recordedBlob = null;
-    let selection = {start: null, end: null};
+    let selection = { start: null, end: null };
+
+    let isPlaying = false;   // Stato play/pause
+    let isLoopMode = false;  // Stato loop
 
     // Riferimenti agli elementi
+    const activateMicBtn = document.getElementById('activateMic');
+    const microphonePrompt = document.getElementById('microphonePrompt');
     const recordButton = document.getElementById('recordButton');
     const stopButton = document.getElementById('stopButton');
-    const playButton = document.getElementById('playButton');
+    const playPauseButton = document.getElementById('playPauseButton');
     const loopButton = document.getElementById('loopButton');
     const rateSlider = document.getElementById('rateSlider');
     const rateValue = document.getElementById('rateValue');
@@ -130,35 +138,35 @@
     let isDragging = false;
     let dragStartX = null;
 
-    // Modal per attivare il microfono
-    document.getElementById('activateMic').addEventListener('click', async () => {
+    // --- Modal per attivare il microfono ---
+    activateMicBtn.addEventListener('click', async () => {
       try {
-        // Richiede il permesso al microfono (questo mostra il prompt)
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("Microfono attivato:", stream);
-        // Nasconde il modal e abilita il pulsante di registrazione
-        document.getElementById('microphonePrompt').style.display = 'none';
+        // Nascondi il modal e abilita i pulsanti di registrazione e riproduzione
+        microphonePrompt.style.display = 'none';
         recordButton.disabled = false;
+        // (Se necessario, puoi salvare lo stream per altre operazioni)
       } catch (err) {
         console.error("Accesso al microfono negato:", err);
         alert("Accesso al microfono non consentito. Clicca su 'Consenti' quando richiesto.");
       }
     });
 
-    // Avvia la registrazione
+    // --- Registrazione ---
     recordButton.addEventListener('click', async () => {
       // Reset dati precedenti
       audioChunks = [];
       audioBuffer = null;
       recordedBlob = null;
-      playButton.disabled = true;
+      playPauseButton.disabled = true;
       loopButton.disabled = true;
-      selection = {start: null, end: null};
+      selection = { start: null, end: null };
       selectionDiv.style.display = 'none';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       try {
-        // Richiede nuovamente il flusso audio (in caso servisse)
+        // Richiedi il flusso audio (può essere richiesto nuovamente)
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = event => {
@@ -173,7 +181,7 @@
             audioCtx.decodeAudioData(reader.result, buffer => {
               audioBuffer = buffer;
               drawWaveform();
-              playButton.disabled = false;
+              playPauseButton.disabled = false;
               loopButton.disabled = false;
             });
           };
@@ -196,11 +204,11 @@
       }
     });
 
-    // Funzione per disegnare una forma d'onda semplificata sul canvas
+    // --- Funzione per disegnare la forma d'onda ---
     function drawWaveform() {
       if (!audioBuffer) return;
       const rawData = audioBuffer.getChannelData(0);
-      const samples = canvas.width;
+      const samples = canvas.width; // Un campione per pixel
       const blockSize = Math.floor(rawData.length / samples);
       const filteredData = [];
       for (let i = 0; i < samples; i++) {
@@ -220,7 +228,7 @@
       }
     }
 
-    // Gestione eventi del mouse per la selezione sul canvas
+    // --- Gestione eventi per la selezione sul canvas ---
     canvas.addEventListener('mousedown', (e) => {
       isDragging = true;
       const rect = canvas.getBoundingClientRect();
@@ -243,56 +251,85 @@
       if (selection.start > selection.end) {
         [selection.start, selection.end] = [selection.end, selection.start];
       }
+      updateSelectionDiv();
     });
 
+    // Aggiorna il div che mostra la selezione e, se il loop è attivo, aggiorna loopStart/loopEnd
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
       selectionDiv.style.display = 'block';
       selectionDiv.style.left = x + 'px';
       selectionDiv.style.width = width + 'px';
+      if (isLoopMode && source && audioBuffer) {
+        const loopStartRatio = x / canvas.width;
+        const loopEndRatio = (x + width) / canvas.width;
+        source.loopStart = loopStartRatio * audioBuffer.duration;
+        source.loopEnd = loopEndRatio * audioBuffer.duration;
+      }
     }
 
-    // Aggiornamento della velocità di riproduzione
+    // --- Aggiornamento dinamico della velocità ---
     rateSlider.addEventListener('input', () => {
       rateValue.textContent = rateSlider.value;
-    });
-
-    // Riproduce l'intero sample una volta
-    playButton.addEventListener('click', () => {
-      if (!audioBuffer) return;
-      if (source) { 
-        try { source.stop(); } catch(e) { }
+      if (source) {
+        source.playbackRate.value = parseFloat(rateSlider.value);
       }
-      source = audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = parseFloat(rateSlider.value);
-      source.connect(audioCtx.destination);
-      source.start();
     });
 
-    // Riproduce in loop la parte selezionata
+    // --- Play/Pausa ---
+    // Poiché AudioBufferSourceNode è "usa e getta", per implementare Play/Pausa usiamo suspend/resume dell'AudioContext.
+    // Notare che questo sospende tutto l'audio nel contesto.
+    playPauseButton.addEventListener('click', async () => {
+      if (!audioBuffer) return;
+      // Se non è in riproduzione, avvia (o riprendi) la riproduzione
+      if (!isPlaying) {
+        // Se il contesto è sospeso, resume
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        // Se non esiste ancora un source (cioè, al primo play), crealo
+        if (!source) {
+          source = audioCtx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.playbackRate.value = parseFloat(rateSlider.value);
+          source.loop = isLoopMode;
+          if (isLoopMode && audioBuffer) {
+            const x = Math.min(selection.start, selection.end);
+            const width = Math.abs(selection.end - selection.start);
+            const loopStartRatio = x / canvas.width;
+            const loopEndRatio = (x + width) / canvas.width;
+            source.loopStart = loopStartRatio * audioBuffer.duration;
+            source.loopEnd = loopEndRatio * audioBuffer.duration;
+          }
+          source.connect(audioCtx.destination);
+          source.start();
+        }
+        isPlaying = true;
+        playPauseButton.textContent = 'Pausa';
+      } else {
+        // Se è in riproduzione, sospendi il contesto per mettere in pausa
+        await audioCtx.suspend();
+        isPlaying = false;
+        playPauseButton.textContent = 'Play';
+      }
+    });
+
+    // --- Toggle Loop Mode ---
     loopButton.addEventListener('click', () => {
-      if (!audioBuffer) return;
-      if (selection.start === null || selection.end === null) {
-        alert("Seleziona un'area trascinando sul waveform.");
-        return;
+      isLoopMode = !isLoopMode;
+      if (source) {
+        source.loop = isLoopMode;
+        if (isLoopMode && audioBuffer) {
+          const x = Math.min(selection.start, selection.end);
+          const width = Math.abs(selection.end - selection.start);
+          const loopStartRatio = x / canvas.width;
+          const loopEndRatio = (x + width) / canvas.width;
+          source.loopStart = loopStartRatio * audioBuffer.duration;
+          source.loopEnd = loopEndRatio * audioBuffer.duration;
+        }
       }
-      const loopStartRatio = Math.min(selection.start, selection.end) / canvas.width;
-      const loopEndRatio = Math.max(selection.start, selection.end) / canvas.width;
-      const loopStart = loopStartRatio * audioBuffer.duration;
-      const loopEnd = loopEndRatio * audioBuffer.duration;
-      if (source) { 
-        try { source.stop(); } catch(e) { }
-      }
-      source = audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = parseFloat(rateSlider.value);
-      source.loop = true;
-      source.loopStart = loopStart;
-      source.loopEnd = loopEnd;
-      source.connect(audioCtx.destination);
-      source.start();
+      loopButton.textContent = isLoopMode ? 'Loop ON' : 'Loop OFF';
     });
   </script>
 </body>
