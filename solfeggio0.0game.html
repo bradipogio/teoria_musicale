@@ -787,6 +787,7 @@
       gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
       let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
       document.getElementById("player-name").value = playerNameInput;
+      enableAnswerButtons()
       score = 0; consecutiveCorrect = 0;
       document.getElementById("scoreboard").style.display = "block";
       document.getElementById("result").textContent = "";
