@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop, Live Waveform e Piano Pitch-Shift (Beta)</title>
+  <title>Registrazione, Loop, Live Waveform e Piano Pitch-Shift</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal Microfono -->
+  <!-- Modal per attivare il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -161,7 +161,7 @@
     </div>
   </div>
 
-  <!-- Controlli Principali -->
+  <!-- Controlli principali -->
   <h1>Registrazione, Loop & Piano Pitch-Shift</h1>
   <div>
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
@@ -200,7 +200,7 @@
     let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
     let sourceNodes = []; // BufferSource per la riproduzione
     let selectedRoot = null; // Nota root (es. "C4")
-    let updatingPlayback = false; // Per evitare aggiornamenti ripetuti
+    let updatingPlayback = false; // per evitare loop di aggiornamento
 
     // Per live visualization
     let liveAnalyser = null;
@@ -233,10 +233,12 @@
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
+      // Impedisci che i bordi si incrocino
+      if(width < 10) { /* Imposta una larghezza minima */ }
       selectionDiv.style.display = "block";
       selectionDiv.style.left = x + "px";
       selectionDiv.style.width = width + "px";
-      // Posiziona gli handle (semplice, sempre in fondo)
+      // Posiziona gli handle (semplice: left a 0 e right a 0 all'interno del box)
       leftHandle.style.left = "0px";
       rightHandle.style.right = "0px";
       if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
@@ -302,6 +304,7 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
+      // Se una nuova registrazione parte, ferma eventuale playback e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -396,6 +399,7 @@
       const clickX = e.clientX - rect.left;
       const selLeft = parseFloat(selectionDiv.style.left) || 0;
       const selWidth = parseFloat(selectionDiv.style.width) || canvas.width;
+      // Se clicco dentro la selezione, sposta tutta la selezione
       if(clickX >= selLeft && clickX <= selLeft + selWidth) {
         draggingSelection = true;
         dragStartX = clickX;
@@ -413,8 +417,20 @@
       const currentX = e.clientX - rect.left;
       if(draggingSelection) {
         const delta = currentX - dragStartX;
-        selection.start = Math.max(0, selection.start + delta);
-        selection.end = Math.min(canvas.width, selection.end + delta);
+        // Sposta la selezione senza farla oltrepassare i bordi
+        let newStart = Math.max(0, selection.start + delta);
+        let newEnd = Math.min(canvas.width, selection.end + delta);
+        // Se l'area si riduce troppo, mantieni la dimensione
+        if(newEnd - newStart < 10) {
+          // imposta dimensione minima di 10 px
+          newEnd = newStart + 10;
+          if(newEnd > canvas.width) {
+            newEnd = canvas.width;
+            newStart = newEnd - 10;
+          }
+        }
+        selection.start = newStart;
+        selection.end = newEnd;
         dragStartX = currentX;
       } else {
         selection.end = currentX;
@@ -567,6 +583,7 @@
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = whiteKeyHeight * 0.6;
     let whiteKeyCount = 0;
+    // Genera tastiera: per ogni tasto (sia bianco che nero) usiamo lo stesso gestore
     for(let o = 0; o < numOctaves; o++){
       for(let i = 0; i < 12; i++){
         let noteObj = octaveNotes[i];
@@ -586,13 +603,26 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            if(e.shiftKey) {
-              if(selectedRoot && selectedRoot !== key.dataset.note) {
+            // Se il tasto cliccato è già il root, allora lo deseleziona; altrimenti, se esiste un root già, calcola l'intervallo
+            if(!selectedRoot) {
+              clearKeyboardActive();
+              key.classList.add("active");
+              selectedRoot = key.dataset.note;
+              activeChordOffsets = [];
+            } else {
+              if(selectedRoot === key.dataset.note) {
+                // Deseleziona il root
+                key.classList.remove("active");
+                selectedRoot = null;
+                activeChordOffsets = [];
+              } else {
+                // Calcola l'intervallo rispetto al root
                 let rootLetter = selectedRoot.replace(/\d+/,"");
                 let currentLetter = noteObj.note;
                 let diff = whiteMapping[currentLetter] - whiteMapping[rootLetter];
                 if(diff > 6) diff -= 12;
                 if(diff < -6) diff += 12;
+                // Toggle: se già attivo, rimuovilo, altrimenti aggiungilo
                 if(key.classList.contains("active")){
                   key.classList.remove("active");
                   activeChordOffsets = activeChordOffsets.filter(o => o !== diff);
@@ -600,20 +630,9 @@
                   key.classList.add("active");
                   activeChordOffsets.push(diff);
                 }
-              } else {
-                clearKeyboardActive();
-                key.classList.add("active");
-                selectedRoot = key.dataset.note;
-                activeChordOffsets = [];
               }
-              if(isPlaying) stopPlaybackAndRestart();
-            } else {
-              clearKeyboardActive();
-              key.classList.add("active");
-              selectedRoot = key.dataset.note;
-              activeChordOffsets = [];
-              if(isPlaying) stopPlaybackAndRestart();
             }
+            if(isPlaying) stopPlaybackAndRestart();
           });
         } else {
           let key = document.createElement("div");
