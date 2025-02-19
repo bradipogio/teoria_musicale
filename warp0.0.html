@@ -7,7 +7,7 @@
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
-    /* Stili generali */
+    /* STILI GENERALI */
     body {
       font-family: 'Roboto', sans-serif;
       background: #f5f5f5;
@@ -117,7 +117,8 @@
       background: #fff;
       border: 1px solid #000;
     }
-    .white-key.active {
+    /* Utilizziamo la stessa classe 'active' per evidenziare sia il root che il pitch shift attivo */
+    .white-key.active, .black-key.active {
       background: #ffd700;
     }
     .black-key {
@@ -157,7 +158,7 @@
   </div>
   <div>
     <button id="playPauseButton" class="game-button" disabled>Play</button>
-    <button id="loopButton" class="game-button" disabled>Loop OFF</button>
+    <button id="loopButton" class="game-button" disabled>Loop ON</button>
   </div>
   <div>
     <label for="rateSlider">Velocità di Riproduzione:</label>
@@ -182,8 +183,9 @@
     let recordedBlob = null;
     let isRecording = false;
     let isPlaying = false;
-    let isLoopMode = false;
-    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi
+    // Imposta loop ON di default
+    let isLoopMode = true;
+    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi per il pitch shift
     let sourceNodes = [];         // array dei BufferSource per la riproduzione
 
     // Per live visualization
@@ -242,7 +244,6 @@
       const bufferLength = liveAnalyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       liveAnalyser.getByteTimeDomainData(dataArray);
-      // Disegna un waveform più "corposo"
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       const sliceWidth = canvas.width / bufferLength;
@@ -259,10 +260,20 @@
       liveAnalyser = null;
     }
 
-    /********** REGISTRAZIONE **********/
+    /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
+      // Se si inizia una nuova registrazione, ferma eventuali source in riproduzione e resetta tutto
+      if(isPlaying) {
+        sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
+        sourceNodes = [];
+        isPlaying = false;
+        playPauseButton.textContent = "Play";
+      }
+      activeChordOffsets = [];
+      clearKeyboardActive();
+      
       if(!isRecording) {
-        // Avvia registrazione
+        // Resetta dati precedenti
         audioChunks = [];
         updateDebug();
         audioBuffer = null;
@@ -271,7 +282,7 @@
         loopButton.disabled = true;
         selection = { start: null, end: null };
         selectionDiv.style.display = "none";
-        ctx.clearRect(0,0,canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           startLiveVisualization(stream);
@@ -321,21 +332,21 @@
       const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
       let filteredData = [];
-      for(let i=0; i<samples; i++){
+      for(let i = 0; i < samples; i++){
         let sum = 0;
-        for(let j=0; j<blockSize; j++){
-          sum += Math.abs(rawData[i*blockSize+j]);
+        for(let j = 0; j < blockSize; j++){
+          sum += Math.abs(rawData[i * blockSize + j]);
         }
-        filteredData.push(sum/blockSize);
+        filteredData.push(sum / blockSize);
       }
       const maxVal = Math.max(...filteredData);
-      ctx.clearRect(0,0,canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#007bff";
-      const middle = canvas.height/2;
-      for(let i=0; i<samples; i++){
-        let norm = maxVal > 0 ? filteredData[i]/maxVal : 0;
+      const middle = canvas.height / 2;
+      for(let i = 0; i < samples; i++){
+        let norm = maxVal > 0 ? filteredData[i] / maxVal : 0;
         let y = norm * canvas.height;
-        ctx.fillRect(i, middle - y/2, 1, y);
+        ctx.fillRect(i, middle - y / 2, 1, y);
       }
     }
 
@@ -357,7 +368,7 @@
     });
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
-      if(selection.start > selection.end) {
+      if(selection.start > selection.end){
         [selection.start, selection.end] = [selection.end, selection.start];
       }
       updateSelectionDiv();
@@ -370,7 +381,7 @@
       selectionDiv.style.width = width + "px";
       if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
         const loopStartRatio = x / canvas.width;
-        const loopEndRatio = (x+width) / canvas.width;
+        const loopEndRatio = (x + width) / canvas.width;
         sourceNodes.forEach(src => {
           src.loopStart = loopStartRatio * audioBuffer.duration;
           src.loopEnd = loopEndRatio * audioBuffer.duration;
@@ -411,20 +422,20 @@
       sourceNodes = [];
       const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
       const voiceGain = 1 / numVoices;
-      for(let i=0; i<numVoices; i++){
+      for(let i = 0; i < numVoices; i++){
         let src = audioCtx.createBufferSource();
         src.buffer = audioBuffer;
         src.playbackRate.value = parseFloat(rateSlider.value);
         if(activeChordOffsets.length > 0) {
           const offset = activeChordOffsets[i];
-          src.detune.value = offset * 100; // 1 semitono = 100 cent
+          src.detune.value = offset * 100;
         }
         src.loop = isLoopMode;
         if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
           const x = Math.min(selection.start, selection.end);
           const width = Math.abs(selection.end - selection.start);
           const loopStartRatio = x / canvas.width;
-          const loopEndRatio = (x+width) / canvas.width;
+          const loopEndRatio = (x + width) / canvas.width;
           src.loopStart = loopStartRatio * audioBuffer.duration;
           src.loopEnd = loopEndRatio * audioBuffer.duration;
         }
@@ -444,7 +455,7 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Definisci octaveNotes (necessario per generare la tastiera)
+    // Definisci la variabile octaveNotes (necessaria per generare la tastiera)
     const octaveNotes = [
       { note: 'C', type: 'white' },
       { note: 'C#', type: 'black' },
@@ -459,7 +470,6 @@
       { note: 'A#', type: 'black' },
       { note: 'B', type: 'white' }
     ];
-    // Mappa per i tasti
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -471,6 +481,7 @@
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = whiteKeyHeight * 0.6;
     let whiteKeyCount = 0;
+    // Genera tastiera
     for(let o = 0; o < numOctaves; o++){
       for(let i = 0; i < 12; i++){
         let noteObj = octaveNotes[i];
@@ -490,11 +501,26 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            if(e.shiftKey) return;
-            clearKeyboardActive();
-            key.classList.add("active");
-            activeChordOffsets = []; // rimuove eventuali pitch shift
-            if(isPlaying) stopPlaybackAndRestart();
+            if(e.shiftKey) {
+              // Toggle pitch shift per tasto bianco: attiva/disattiva e aggiorna riproduzione
+              if(key.classList.contains("active")){
+                key.classList.remove("active");
+                const offset = parseInt(key.getAttribute("data-offset"));
+                activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
+              } else {
+                key.classList.add("active");
+                const offset = parseInt(key.getAttribute("data-offset"));
+                activeChordOffsets.push(offset);
+              }
+              console.log("Active chord offsets:", activeChordOffsets);
+              if(isPlaying) stopPlaybackAndRestart();
+            } else {
+              // Click senza SHIFT: imposta questo tasto come root e cancella eventuali pitch shift
+              clearKeyboardActive();
+              key.classList.add("active");
+              activeChordOffsets = [];
+              if(isPlaying) stopPlaybackAndRestart();
+            }
           });
         } else {
           let key = document.createElement("div");
