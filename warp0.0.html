@@ -2,11 +2,12 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop, Live Waveform e Piano per Pitch-Shift</title>
+  <title>Registrazione, Loop, Live Waveform e Piano Pitch-Shift</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
+    /* STILI GENERALI */
     body {
       font-family: 'Roboto', sans-serif;
       background: #f5f5f5;
@@ -14,7 +15,6 @@
       padding: 20px;
       margin: 0;
     }
-    /* Bottone generico */
     .game-button {
       padding: 10px 20px;
       font-size: 16px;
@@ -26,12 +26,11 @@
       transition: background 0.3s, transform 0.2s;
       margin: 10px;
     }
-    /* Bottone record in rosso */
+    /* Bottone Record: rosso con bordo lampeggiante durante la registrazione */
     #recordButton {
       background: #ff4d4d;
       color: #fff;
     }
-    /* Durante la registrazione, bordo lampeggiante */
     .recording {
       animation: flash 1s infinite;
     }
@@ -40,10 +39,19 @@
       50% { border-color: #000; }
       100% { border-color: #fff; }
     }
-    /* Bottone play/pausa in verde */
+    /* Bottone Play/Pausa (verde) e Loop */
     #playPauseButton {
       background: #28a745;
       color: #fff;
+    }
+    #loopButton {
+      background: #ffd700;
+      color: #000;
+    }
+    /* Slider di velocità grande */
+    input[type="range"] {
+      width: 500px;
+      margin: 10px;
     }
     /* Contenitore waveform */
     #waveform {
@@ -54,7 +62,7 @@
       position: relative;
       background: #fff;
     }
-    /* Canvas per disegnare il waveform */
+    /* Canvas per il waveform */
     #canvas {
       width: 600px;
       height: 150px;
@@ -68,12 +76,13 @@
       pointer-events: none;
       display: none;
     }
-    /* Slider velocità grande */
-    input[type="range"] {
-      width: 500px;
-      margin: 10px;
+    /* Debug */
+    #debugChunks {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #333;
     }
-    /* Modal per richiesta microfono */
+    /* Modal per attivare il microfono */
     #microphonePrompt {
       position: fixed;
       top: 0;
@@ -93,38 +102,49 @@
       text-align: center;
       width: 300px;
     }
-    /* Debug: conteggio dei chunk */
-    #debugChunks {
-      font-size: 14px;
-      margin-top: 10px;
-      color: #333;
-    }
-    /* Tastiera piano */
+    /* Tastiera – stile preso dal tuo esempio */
     #keyboard {
-      margin: 20px auto;
-      width: 620px; /* circa la larghezza del waveform */
-      display: flex;
-      justify-content: center;
-    }
-    .piano-key {
-      flex: 1;
-      height: 100px;
-      margin: 1px;
-      border: 1px solid #333;
-      background: #fff;
-      cursor: pointer;
-      user-select: none;
       position: relative;
-      font-weight: bold;
-      line-height: 100px;
+      width: 90%;
+      max-width: 700px;
+      margin: 20px auto;
+      user-select: none;
+      height: 150px;
     }
-    .piano-key.active {
+    .white-key, .black-key {
+      position: absolute;
+      box-sizing: border-box;
+      cursor: pointer;
+    }
+    .white-key {
+      background: #fff;
+      border: 1px solid #000;
+    }
+    .white-key.active {
       background: #ffd700;
+    }
+    .black-key {
+      background: #000;
+      border: 1px solid #000;
+      z-index: 2;
+      border-radius: 0 0 5px 5px;
+    }
+    .black-key.active {
+      background: #ffa500;
+    }
+    .key-label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: #000;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <!-- Modal per attivazione microfono -->
+  <!-- Modal di attivazione microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -133,10 +153,8 @@
     </div>
   </div>
 
-  <!-- Titolo -->
+  <!-- Controlli principali -->
   <h1>Registrazione, Loop & Piano Pitch-Shift</h1>
-
-  <!-- Controlli di registrazione e riproduzione -->
   <div>
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
   </div>
@@ -149,48 +167,33 @@
     <input type="range" id="rateSlider" min="0.3" max="10" step="0.1" value="1">
     <span id="rateValue">1</span>x
   </div>
-
-  <!-- Waveform -->
   <div id="waveform">
     <canvas id="canvas" width="600" height="150"></canvas>
     <div id="selection"></div>
   </div>
   <div id="debugChunks">Audio chunks: 0</div>
 
-  <!-- Tastiera piano per pitch-shift -->
-  <div id="keyboard">
-    <!-- Ogni tasto ha data-note (nome) e data-offset (semitoni rispetto a C) -->
-    <div class="piano-key" data-note="C" data-offset="0">C</div>
-    <div class="piano-key" data-note="D" data-offset="2">D</div>
-    <div class="piano-key" data-note="E" data-offset="4">E</div>
-    <div class="piano-key" data-note="F" data-offset="5">F</div>
-    <div class="piano-key" data-note="G" data-offset="7">G</div>
-    <div class="piano-key" data-note="A" data-offset="9">A</div>
-    <div class="piano-key" data-note="B" data-offset="11">B</div>
-  </div>
+  <!-- Tastiera – generata in 2 ottave -->
+  <div id="keyboard"></div>
 
   <script>
-    // Variabili globali
+    /************ VARIABILI GLOBALI ************/
     let mediaRecorder;
     let audioChunks = [];
     let audioBuffer = null;
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Per la riproduzione ora useremo un array di source nodes per gestire accordi
-    let sourceNodes = []; 
     let recordedBlob = null;
-    let selection = { start: null, end: null };
     let isRecording = false;
     let isPlaying = false;
     let isLoopMode = false;
-
+    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi per il pitch shift
+    let sourceNodes = [];         // array dei source per la riproduzione (per accordi)
+    
     // Per live visualization
     let liveAnalyser = null;
-    let liveAnimationFrame;
-
-    // Array dei semitoni attivi dalla tastiera (in centesimi, 100 cent = 1 semitono)
-    let activeChordOffsets = [];
-
-    // Riferimenti agli elementi
+    let liveAnimationFrame = null;
+    
+    /************ RIFERIMENTI ELEMENTI ************/
     const activateMicBtn = document.getElementById('activateMic');
     const microphonePrompt = document.getElementById('microphonePrompt');
     const recordButton = document.getElementById('recordButton');
@@ -203,75 +206,65 @@
     const selectionDiv = document.getElementById('selection');
     const debugChunks = document.getElementById('debugChunks');
     const keyboard = document.getElementById('keyboard');
-    const pianoKeys = document.querySelectorAll('.piano-key');
-
+    
     let isDragging = false;
     let dragStartX = null;
+    let selection = { start: null, end: null };
 
-    // --- Modal per attivare il microfono ---
+    /************ PERMESSO MICROFONO ************/
+    if(navigator.permissions) {
+      navigator.permissions.query({ name: "microphone" }).then(result => {
+        if(result.state === "granted") {
+          microphonePrompt.style.display = "none";
+          recordButton.disabled = false;
+        }
+      });
+    }
     activateMicBtn.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("Microfono attivato:", stream);
-        microphonePrompt.style.display = 'none';
+        microphonePrompt.style.display = "none";
         recordButton.disabled = false;
-      } catch (err) {
+      } catch(err) {
         console.error("Accesso al microfono negato:", err);
         alert("Accesso al microfono non consentito. Clicca su 'Consenti' quando richiesto.");
       }
     });
 
-    // --- Aggiornamento debug chunk ---
-    function updateDebug() {
-      debugChunks.textContent = "Audio chunks: " + audioChunks.length;
-    }
-
-    // --- Live Visualization: usa AnalyserNode per disegnare il waveform in tempo reale ---
+    /************ LIVE WAVEFORM ************/
     function startLiveVisualization(stream) {
-      const source = audioCtx.createMediaStreamSource(stream);
+      const liveSource = audioCtx.createMediaStreamSource(stream);
       liveAnalyser = audioCtx.createAnalyser();
       liveAnalyser.fftSize = 2048;
-      source.connect(liveAnalyser);
+      liveSource.connect(liveAnalyser);
       drawLiveWaveform();
     }
-
     function drawLiveWaveform() {
-      if (!liveAnalyser) return;
+      if(!liveAnalyser) return;
       const bufferLength = liveAnalyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       liveAnalyser.getByteTimeDomainData(dataArray);
-      ctx.fillStyle = '#fff';
+      // Disegna un'area piena per rendere il waveform più visibile
+      ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#007bff';
-      ctx.beginPath();
-      const sliceWidth = canvas.width * 1.0 / bufferLength;
-      let x = 0;
+      const sliceWidth = canvas.width / bufferLength;
+      ctx.fillStyle = "#007bff";
       for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
-        const y = v * canvas.height/2;
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        x += sliceWidth;
+        let v = dataArray[i] / 255;
+        let y = v * canvas.height;
+        ctx.fillRect(i * sliceWidth, y, sliceWidth, canvas.height - y);
       }
-      ctx.lineTo(canvas.width, canvas.height/2);
-      ctx.stroke();
       liveAnimationFrame = requestAnimationFrame(drawLiveWaveform);
     }
-
     function stopLiveVisualization() {
-      if (liveAnimationFrame) {
-        cancelAnimationFrame(liveAnimationFrame);
-      }
+      if(liveAnimationFrame) cancelAnimationFrame(liveAnimationFrame);
       liveAnalyser = null;
     }
 
-    // --- Registrazione toggle (Record/Stop) ---
+    /************ REGISTRAZIONE ************/
     recordButton.addEventListener('click', async () => {
-      if (!isRecording) {
+      if(!isRecording) {
         // Avvia la registrazione
         audioChunks = [];
         updateDebug();
@@ -280,47 +273,41 @@
         playPauseButton.disabled = true;
         loopButton.disabled = true;
         selection = { start: null, end: null };
-        selectionDiv.style.display = 'none';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        selectionDiv.style.display = "none";
+        ctx.clearRect(0,0,canvas.width, canvas.height);
         try {
-          // Richiedi il flusso audio (anche se già attivo)
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          // Avvia la visualizzazione live
           startLiveVisualization(stream);
           mediaRecorder = new MediaRecorder(stream);
           mediaRecorder.ondataavailable = event => {
-            if (event.data.size > 0) {
+            if(event.data.size > 0) {
               audioChunks.push(event.data);
               updateDebug();
             }
           };
           mediaRecorder.onstop = () => {
             stopLiveVisualization();
-            recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
             const reader = new FileReader();
             reader.onload = function() {
               audioCtx.decodeAudioData(reader.result, buffer => {
                 audioBuffer = buffer;
-                // Disegna il waveform finale (normalizzato)
-                drawWaveform();
+                drawFinalWaveform();
                 playPauseButton.disabled = false;
                 loopButton.disabled = false;
               });
             };
             reader.readAsArrayBuffer(recordedBlob);
           };
-          // Avvia registrazione con timeslice per ottenere chunk periodici
-          mediaRecorder.start(200);
+          mediaRecorder.start(200); // invia chunk ogni 200 ms
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
-        } catch (err) {
+        } catch(err) {
           console.error("Errore durante la registrazione:", err);
         }
       } else {
-        // Ferma la registrazione
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        if(mediaRecorder && mediaRecorder.state !== "inactive") {
           mediaRecorder.stop();
         }
         isRecording = false;
@@ -328,33 +315,35 @@
         recordButton.classList.remove("recording");
       }
     });
-
-    // --- Funzione per disegnare il waveform finale (normalizzato) ---
-    function drawWaveform() {
-      if (!audioBuffer) return;
+    function updateDebug() {
+      debugChunks.textContent = "Audio chunks: " + audioChunks.length;
+    }
+    // Disegna il waveform finale normalizzato
+    function drawFinalWaveform() {
+      if(!audioBuffer) return;
       const rawData = audioBuffer.getChannelData(0);
       const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
-      const filteredData = [];
-      for (let i = 0; i < samples; i++) {
+      let filteredData = [];
+      for(let i = 0; i < samples; i++){
         let sum = 0;
-        for (let j = 0; j < blockSize; j++) {
-          sum += Math.abs(rawData[(i * blockSize) + j]);
+        for(let j = 0; j < blockSize; j++){
+          sum += Math.abs(rawData[i * blockSize + j]);
         }
         filteredData.push(sum / blockSize);
       }
       const maxVal = Math.max(...filteredData);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#007bff';
-      const middle = canvas.height / 2;
-      for (let i = 0; i < samples; i++) {
-        let normalized = maxVal > 0 ? filteredData[i] / maxVal : 0;
-        const y = normalized * canvas.height;
+      ctx.clearRect(0,0,canvas.width, canvas.height);
+      ctx.fillStyle = "#007bff";
+      const middle = canvas.height/2;
+      for(let i = 0; i < samples; i++){
+        let norm = maxVal > 0 ? filteredData[i]/maxVal : 0;
+        let y = norm * canvas.height;
         ctx.fillRect(i, middle - y/2, 1, y);
       }
     }
 
-    // --- Gestione eventi per la selezione sul canvas (loop) ---
+    /************ SELEZIONE LOOP ************/
     canvas.addEventListener('mousedown', (e) => {
       isDragging = true;
       const rect = canvas.getBoundingClientRect();
@@ -364,7 +353,7 @@
       updateSelectionDiv();
     });
     canvas.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
+      if(!isDragging) return;
       const rect = canvas.getBoundingClientRect();
       const currentX = e.clientX - rect.left;
       selection.end = currentX;
@@ -372,7 +361,7 @@
     });
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
-      if (selection.start > selection.end) {
+      if(selection.start > selection.end){
         [selection.start, selection.end] = [selection.end, selection.start];
       }
       updateSelectionDiv();
@@ -380,11 +369,10 @@
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
-      selectionDiv.style.display = 'block';
-      selectionDiv.style.left = x + 'px';
-      selectionDiv.style.width = width + 'px';
-      if (isLoopMode && sourceNodes.length > 0 && audioBuffer) {
-        // Aggiorna i valori di loop per ciascun source
+      selectionDiv.style.display = "block";
+      selectionDiv.style.left = x + "px";
+      selectionDiv.style.width = width + "px";
+      if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
         const loopStartRatio = x / canvas.width;
         const loopEndRatio = (x + width) / canvas.width;
         sourceNodes.forEach(src => {
@@ -394,58 +382,50 @@
       }
     }
 
-    // --- Aggiornamento dinamico della velocità ---
+    /************ PLAY/PAUSA E LOOP ************/
     rateSlider.addEventListener('input', () => {
       rateValue.textContent = rateSlider.value;
-      if (sourceNodes.length > 0) {
+      if(sourceNodes.length > 0) {
         sourceNodes.forEach(src => {
           src.playbackRate.value = parseFloat(rateSlider.value);
         });
       }
     });
-
-    // --- Piano Keyboard per pitch-shift ---
-    pianoKeys.forEach(key => {
-      key.addEventListener('click', () => {
-        // Toggle classe active
-        key.classList.toggle('active');
-        const offset = parseInt(key.getAttribute('data-offset'));
-        // Se attivo, aggiungi all'array; altrimenti rimuovi
-        if (key.classList.contains('active')) {
-          if (!activeChordOffsets.includes(offset)) {
-            activeChordOffsets.push(offset);
-          }
-        } else {
-          activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
-        }
-        console.log("Chord offsets (semitoni):", activeChordOffsets);
-      });
+    playPauseButton.addEventListener('click', async () => {
+      if(!audioBuffer) return;
+      if(!isPlaying) {
+        if(audioCtx.state === "suspended") await audioCtx.resume();
+        if(sourceNodes.length === 0) startPlayback();
+        isPlaying = true;
+        playPauseButton.textContent = "Pausa";
+      } else {
+        await audioCtx.suspend();
+        isPlaying = false;
+        playPauseButton.textContent = "Play";
+      }
     });
-
-    // --- Funzione per creare e avviare la riproduzione ---
-    // Se non ci sono tasti attivi, viene creato un singolo source.
-    // Se ci sono tasti attivi, viene creato un source per ciascun tasto, con detune impostato (in centesimi)
+    loopButton.addEventListener('click', () => {
+      isLoopMode = !isLoopMode;
+      if(sourceNodes.length > 0) {
+        sourceNodes.forEach(src => src.loop = isLoopMode);
+      }
+      loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
+    });
+    // Avvia la riproduzione: se sono attivi tasti per pitch shift crea tanti source node
     function startPlayback() {
       sourceNodes = [];
-      const numVoices = activeChordOffsets.length || 1; // almeno 1 voce
-      // Calcola il volume per ciascuna voce per evitare clipping (dividi per il numero di voci)
+      const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
       const voiceGain = 1 / numVoices;
-      for (let i = 0; i < numVoices; i++) {
-        const src = audioCtx.createBufferSource();
+      for(let i = 0; i < numVoices; i++){
+        let src = audioCtx.createBufferSource();
         src.buffer = audioBuffer;
         src.playbackRate.value = parseFloat(rateSlider.value);
-        // Crea un gain node per questa voce
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.value = voiceGain;
-        // Se abbiamo una nota attiva, applica il detune (in centesimi)
-        if (activeChordOffsets.length > 0) {
-          // Per ciascun voce, usa l'offset corrispondente
+        if(activeChordOffsets.length > 0) {
           const offset = activeChordOffsets[i];
-          src.detune.value = offset * 100; // 100 cent = 1 semitono
+          src.detune.value = offset * 100; // 1 semitono = 100 cent
         }
-        // Imposta loop se in modalità loop e se l'utente ha definito un intervallo
         src.loop = isLoopMode;
-        if (isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+        if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
           const x = Math.min(selection.start, selection.end);
           const width = Math.abs(selection.end - selection.start);
           const loopStartRatio = x / canvas.width;
@@ -453,53 +433,105 @@
           src.loopStart = loopStartRatio * audioBuffer.duration;
           src.loopEnd = loopEndRatio * audioBuffer.duration;
         }
+        let gainNode = audioCtx.createGain();
+        gainNode.gain.value = voiceGain;
         src.connect(gainNode).connect(audioCtx.destination);
-        sourceNodes.push(src);
-      }
-      // Aggiungi un listener "ended" solo se non è loop per resettare la riproduzione
-      sourceNodes.forEach(src => {
         src.onended = () => {
-          if (!isLoopMode) {
+          if(!isLoopMode) {
             isPlaying = false;
             playPauseButton.textContent = "Play";
             sourceNodes = [];
           }
         };
-        src.start();
-      });
+        sourceNodes.push(src);
+      }
+      sourceNodes.forEach(src => src.start());
     }
 
-    // --- Play/Pausa ---
-    playPauseButton.addEventListener('click', async () => {
-      if (!audioBuffer) return;
-      if (!isPlaying) {
-        // Se il contesto è sospeso, resume
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
-        // Se non ci sono source, avvia la riproduzione creando i source (o ricrea se precedenti si sono conclusi)
-        if (sourceNodes.length === 0) {
-          startPlayback();
+    /************ GENERAZIONE DELLA TASTIERA ************/
+    // Utilizza la struttura e lo stile della tastiera che ci hai fornito
+    const octaveNotes = [
+      { note: 'C', type: 'white' },
+      { note: 'C#', type: 'black' },
+      { note: 'D', type: 'white' },
+      { note: 'D#', type: 'black' },
+      { note: 'E', type: 'white' },
+      { note: 'F', type: 'white' },
+      { note: 'F#', type: 'black' },
+      { note: 'G', type: 'white' },
+      { note: 'G#', type: 'black' },
+      { note: 'A', type: 'white' },
+      { note: 'A#', type: 'black' },
+      { note: 'B', type: 'white' }
+    ];
+    const numOctaves = 2;
+    // Calcola larghezza tasti bianchi
+    const containerWidth = keyboard.clientWidth;
+    const totalWhiteKeys = numOctaves * 7;
+    const whiteKeyWidth = containerWidth / totalWhiteKeys;
+    const whiteKeyHeight = keyboard.clientHeight;
+    const blackKeyWidth = whiteKeyWidth * 0.6;
+    const blackKeyHeight = whiteKeyHeight * 0.6;
+    // Genera i tasti
+    let whiteKeyCount = 0;
+    for(let o = 0; o < numOctaves; o++){
+      for(let i = 0; i < octaveNotes.length; i++){
+        let noteObj = octaveNotes[i];
+        let fullNote = noteObj.note + (4 + o);
+        if(noteObj.type === "white"){
+          let key = document.createElement("div");
+          key.classList.add("white-key");
+          key.dataset.note = fullNote;
+          key.style.width = whiteKeyWidth + "px";
+          key.style.height = whiteKeyHeight + "px";
+          key.style.left = (whiteKeyCount * whiteKeyWidth) + "px";
+          let label = document.createElement("div");
+          label.classList.add("key-label");
+          label.textContent = fullNote;
+          key.appendChild(label);
+          keyboard.appendChild(key);
+          whiteKeyCount++;
+          // Clic semplice imposta il root (senza pitch shift)
+          key.addEventListener("click", () => {
+            clearKeyboardActive();
+            key.classList.add("active");
+            // Per il root non applichiamo pitch shift
+            // (activeChordOffsets non viene modificato in questo caso)
+          });
+          // Assegna data-offset 0 di default
+          key.setAttribute("data-offset", "0");
+        } else {
+          let key = document.createElement("div");
+          key.classList.add("black-key");
+          key.dataset.note = fullNote;
+          // Posiziona il tasto nero in base al tasto bianco precedente
+          let baseLeft = ((whiteKeyCount - 1) * whiteKeyWidth) + whiteKeyWidth - (blackKeyWidth/2);
+          key.style.width = blackKeyWidth + "px";
+          key.style.height = blackKeyHeight + "px";
+          key.style.left = baseLeft + "px";
+          keyboard.appendChild(key);
+          key.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Toggle: cliccando con SHIFT (o sui neri) si attiva/disattiva il pitch shift
+            if(key.classList.contains("active")){
+              key.classList.remove("active");
+              const offset = parseInt(key.getAttribute("data-offset"));
+              activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
+            } else {
+              key.classList.add("active");
+              const offset = parseInt(key.getAttribute("data-offset"));
+              activeChordOffsets.push(offset);
+            }
+            console.log("Active chord offsets:", activeChordOffsets);
+          });
+          key.setAttribute("data-offset", "0");
         }
-        isPlaying = true;
-        playPauseButton.textContent = "Pausa";
-      } else {
-        // Pause sospendendo il contesto
-        await audioCtx.suspend();
-        isPlaying = false;
-        playPauseButton.textContent = "Play";
       }
-    });
-
-    // --- Toggle Loop Mode ---
-    loopButton.addEventListener('click', () => {
-      isLoopMode = !isLoopMode;
-      // Aggiorna il loop su tutti i sourceNodes se presenti
-      if (sourceNodes.length > 0) {
-        sourceNodes.forEach(src => {
-          src.loop = isLoopMode;
-        });
-      }
-      loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
-    });
+    }
+    function clearKeyboardActive() {
+      const keys = keyboard.querySelectorAll(".white-key, .black-key");
+      keys.forEach(k => k.classList.remove("active"));
+    }
   </script>
 </body>
 </html>
