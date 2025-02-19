@@ -200,9 +200,9 @@
     let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
     let sourceNodes = []; // BufferSource per la riproduzione
     let selectedRoot = "C4"; // Root fissa: Do centrale
-    let updatingPlayback = false; // Per evitare aggiornamenti ripetuti
+    let updatingPlayback = false; // per evitare aggiornamenti ripetuti
 
-    // Variabile per tenere traccia del flusso corrente
+    // Variabile per il flusso corrente (stream)
     let currentStream = null;
 
     // Per live visualization
@@ -212,11 +212,9 @@
     /********** FUNZIONE applyFade **********/
     function applyFade(channelData, sampleRate, fadeDuration = 0.05) {
       const fadeSamples = Math.floor(sampleRate * fadeDuration);
-      // Fade in
       for (let i = 0; i < fadeSamples; i++) {
         channelData[i] *= i / fadeSamples;
       }
-      // Fade out
       for (let i = 0; i < fadeSamples; i++) {
         channelData[channelData.length - fadeSamples + i] *= (fadeSamples - i) / fadeSamples;
       }
@@ -258,7 +256,7 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: 0, end: canvas.width }; // Intera area
+    let selection = { start: 0, end: canvas.width };
 
     /********** FUNZIONE updateSelectionDiv **********/
     function updateSelectionDiv() {
@@ -340,24 +338,24 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se c'è un playback in corso, fermalo
+      // Ferma il playback in corso, se presente
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
         isPlaying = false;
         playPauseButton.textContent = "Play";
       }
-      // Ferma il vecchio stream per cancellare il vecchio sample
+      // Ferma il vecchio stream, se presente, per eliminare il vecchio sample
       if(currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
       }
-      // Reset completo: azzera il vecchio campione e tutte le variabili correlate
+      // Resetta completamente il vecchio campione e le variabili correlate
       audioBuffer = null;
       audioChunks = [];
       activeChordOffsets = [];
       clearKeyboardActive();
-      // Il root resta "C4"
+      // Il root rimane "C4"
       
       if(!isRecording) {
         updateDebug();
@@ -385,7 +383,12 @@
             recordedBlob = new Blob(audioChunks, { type: mimeType });
             const reader = new FileReader();
             reader.onload = function() {
-              audioCtx.decodeAudioData(reader.result, buffer => {
+              const arrayBuffer = reader.result;
+              if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+                console.error("Il blob audio è vuoto");
+                return;
+              }
+              audioCtx.decodeAudioData(arrayBuffer, buffer => {
                 // Applica fade in/out per evitare click
                 for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
                   let channelData = buffer.getChannelData(channel);
@@ -395,6 +398,8 @@
                 drawFinalWaveform();
                 playPauseButton.disabled = false;
                 loopButton.disabled = false;
+              }, err => {
+                console.error("Errore nella decodifica dei dati audio:", err);
               });
             };
             reader.readAsArrayBuffer(recordedBlob);
@@ -616,7 +621,6 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // I tasti bianchi e neri si comportano in modo identico: clicca per attivare/disattivare il relativo offset.
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -662,7 +666,7 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // Tasti bianchi: clic per toggle dell'offset (non cambia root)
+            // I tasti bianchi agiscono come i tasti neri: toggle dell'offset
             const offset = whiteMapping[noteObj.note];
             if(key.classList.contains("active")){
               key.classList.remove("active");
