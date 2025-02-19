@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per attivare il microfono -->
+  <!-- Modal per il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -199,8 +199,8 @@
     let isLoopMode = true; // Loop ON di default
     let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
     let sourceNodes = []; // BufferSource per la riproduzione
-    let selectedRoot = "C4"; // Root predefinita: Do centrale
-    let updatingPlayback = false; // Per evitare loop di aggiornamento
+    let selectedRoot = "C4"; // Root fissa: Do centrale
+    let updatingPlayback = false; // Per evitare aggiornamenti ripetuti
 
     // Per live visualization
     let liveAnalyser = null;
@@ -227,7 +227,7 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: 0, end: canvas.width }; // Inizialmente tutta l'area
+    let selection = { start: 0, end: canvas.width }; // Intera area
 
     /********** FUNZIONE updateSelectionDiv **********/
     function updateSelectionDiv() {
@@ -277,7 +277,7 @@
       liveAnalyser = audioCtx.createAnalyser();
       liveAnalyser.fftSize = 2048;
       liveSource.connect(liveAnalyser);
-      // Triggera un breve oscillatore per mostrare subito un segnale
+      // Triggera un oscillatore breve per mostrare subito un segnale
       let osc = audioCtx.createOscillator();
       osc.frequency.value = 261.63; // Do centrale
       osc.connect(liveAnalyser);
@@ -308,7 +308,7 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // All'avvio di una nuova registrazione, ferma eventuale playback e resetta tutto
+      // Se una nuova registrazione parte, ferma il playback e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -317,7 +317,7 @@
       }
       activeChordOffsets = [];
       clearKeyboardActive();
-      selectedRoot = "C4"; // Root predefinita
+      // Non resettare il root: rimane "C4"
       if(!isRecording) {
         audioChunks = [];
         updateDebug();
@@ -357,7 +357,7 @@
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
-          // Triggera automaticamente il playback (play) così da vedere subito il visual
+          // Trigger automatico del playback per mostrare subito il visual
           startPlayback();
           isPlaying = true;
           playPauseButton.textContent = "Pausa";
@@ -456,12 +456,14 @@
         const rect = canvas.getBoundingClientRect();
         const currentX = e.clientX - rect.left;
         if(draggingLeft) {
-          selection.start = Math.max(0, currentX);
-          if(selection.start > selection.end) selection.start = selection.end;
+          // Impedisci che left oltrepassi right - 10px
+          selection.start = Math.min(currentX, selection.end - 10);
+          if(selection.start < 0) selection.start = 0;
         }
         if(draggingRight) {
-          selection.end = Math.min(canvas.width, currentX);
-          if(selection.end < selection.start) selection.end = selection.start;
+          // Impedisci che right si muova a sinistra di left + 10px
+          selection.end = Math.max(currentX, selection.start + 10);
+          if(selection.end > canvas.width) selection.end = canvas.width;
         }
         updateSelectionDiv();
       }
@@ -555,6 +557,7 @@
     }
 
     /********** GESTIONE TASTIERA **********/
+    // I tasti (bianchi e neri) ora hanno lo stesso comportamento: clicca per toggle l'offset.
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -600,38 +603,15 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // Se SHIFT viene premuto, attiva o disattiva il pitch shift rispetto al root
-            if(e.shiftKey) {
-              if(!selectedRoot) {
-                selectedRoot = "C4"; // root predefinita
-              }
-              if(selectedRoot === key.dataset.note) {
-                // Se cliccato nuovamente il tasto root, deselezionalo
-                key.classList.remove("active");
-                selectedRoot = null;
-                activeChordOffsets = [];
-              } else {
-                // Calcola l'intervallo rispetto al root
-                let rootLetter = selectedRoot.replace(/\d+/,"");
-                let currentLetter = noteObj.note;
-                let diff = whiteMapping[currentLetter] - whiteMapping[rootLetter];
-                if(diff > 6) diff -= 12;
-                if(diff < -6) diff += 12;
-                // Toggle: se attivo, rimuovi; altrimenti, aggiungi
-                if(key.classList.contains("active")){
-                  key.classList.remove("active");
-                  activeChordOffsets = activeChordOffsets.filter(o => o !== diff);
-                } else {
-                  key.classList.add("active");
-                  activeChordOffsets.push(diff);
-                }
-              }
+            // Ora, indipendentemente da SHIFT, i tasti bianchi agiscono come quelli neri:
+            // clicca per toggle l'offset relativo al root predefinito ("C4")
+            const offset = whiteMapping[noteObj.note]; // offset per il tasto
+            if(key.classList.contains("active")){
+              key.classList.remove("active");
+              activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
             } else {
-              // Click senza SHIFT: imposta il tasto come root e resetta il pitch shift
-              clearKeyboardActive();
               key.classList.add("active");
-              selectedRoot = key.dataset.note;
-              activeChordOffsets = [];
+              activeChordOffsets.push(offset);
             }
             if(isPlaying) stopPlaybackAndRestart();
           });
@@ -647,13 +627,12 @@
           keyboard.appendChild(key);
           key.addEventListener("click", (e) => {
             e.stopPropagation();
+            const offset = parseInt(key.getAttribute("data-offset"));
             if(key.classList.contains("active")){
               key.classList.remove("active");
-              const offset = parseInt(key.getAttribute("data-offset"));
               activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
             } else {
               key.classList.add("active");
-              const offset = parseInt(key.getAttribute("data-offset"));
               activeChordOffsets.push(offset);
             }
             if(isPlaying) stopPlaybackAndRestart();
