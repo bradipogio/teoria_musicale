@@ -66,7 +66,7 @@
       width: 600px;
       height: 150px;
     }
-    /* Selezione loop e handle */
+    /* Selezione loop con handle */
     #selection {
       position: absolute;
       top: 0;
@@ -199,8 +199,8 @@
     let isLoopMode = true; // Loop ON di default
     let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
     let sourceNodes = []; // BufferSource per la riproduzione
-    let selectedRoot = "C4"; // Impostato di default al Do centrale
-    let updatingPlayback = false; // per evitare aggiornamenti ripetuti
+    let selectedRoot = "C4"; // Root predefinita: Do centrale
+    let updatingPlayback = false; // Per evitare loop di aggiornamento
 
     // Per live visualization
     let liveAnalyser = null;
@@ -227,18 +227,16 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: 0, end: canvas.width }; // Intera area per default
+    let selection = { start: 0, end: canvas.width }; // Inizialmente tutta l'area
 
     /********** FUNZIONE updateSelectionDiv **********/
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
-      // Impedisci che la larghezza sia inferiore a 10 px
-      let adjustedWidth = Math.max(width, 10);
+      let adjustedWidth = Math.max(width, 10); // larghezza minima 10px
       selectionDiv.style.display = "block";
       selectionDiv.style.left = x + "px";
       selectionDiv.style.width = adjustedWidth + "px";
-      // Posiziona gli handle
       leftHandle.style.left = "0px";
       rightHandle.style.right = "0px";
       if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
@@ -279,7 +277,7 @@
       liveAnalyser = audioCtx.createAnalyser();
       liveAnalyser.fftSize = 2048;
       liveSource.connect(liveAnalyser);
-      // Triggera subito un oscillatore breve per mostrare il segnale
+      // Triggera un breve oscillatore per mostrare subito un segnale
       let osc = audioCtx.createOscillator();
       osc.frequency.value = 261.63; // Do centrale
       osc.connect(liveAnalyser);
@@ -310,6 +308,7 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
+      // All'avvio di una nuova registrazione, ferma eventuale playback e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -318,7 +317,7 @@
       }
       activeChordOffsets = [];
       clearKeyboardActive();
-      selectedRoot = "C4"; // Resetta al Do centrale
+      selectedRoot = "C4"; // Root predefinita
       if(!isRecording) {
         audioChunks = [];
         updateDebug();
@@ -358,6 +357,10 @@
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
+          // Triggera automaticamente il playback (play) così da vedere subito il visual
+          startPlayback();
+          isPlaying = true;
+          playPauseButton.textContent = "Pausa";
         } catch(err) {
           console.error("Errore durante la registrazione:", err);
         }
@@ -422,7 +425,6 @@
         const delta = currentX - dragStartX;
         let newStart = selection.start + delta;
         let newEnd = selection.end + delta;
-        // Impedisci che la selezione esca dai bordi
         if(newStart < 0) { newEnd -= newStart; newStart = 0; }
         if(newEnd > canvas.width) { newStart -= (newEnd - canvas.width); newEnd = canvas.width; }
         selection.start = newStart;
@@ -598,13 +600,13 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // Se SHIFT è premuto, applica pitch shift rispetto al root (default "C4")
+            // Se SHIFT viene premuto, attiva o disattiva il pitch shift rispetto al root
             if(e.shiftKey) {
               if(!selectedRoot) {
-                selectedRoot = "C4";
+                selectedRoot = "C4"; // root predefinita
               }
               if(selectedRoot === key.dataset.note) {
-                // Se clicchi nuovamente il root, lo deselezioni
+                // Se cliccato nuovamente il tasto root, deselezionalo
                 key.classList.remove("active");
                 selectedRoot = null;
                 activeChordOffsets = [];
@@ -615,7 +617,7 @@
                 let diff = whiteMapping[currentLetter] - whiteMapping[rootLetter];
                 if(diff > 6) diff -= 12;
                 if(diff < -6) diff += 12;
-                // Toggle active: se già attivo, deseleziona; altrimenti, seleziona
+                // Toggle: se attivo, rimuovi; altrimenti, aggiungi
                 if(key.classList.contains("active")){
                   key.classList.remove("active");
                   activeChordOffsets = activeChordOffsets.filter(o => o !== diff);
@@ -625,7 +627,7 @@
                 }
               }
             } else {
-              // Click senza SHIFT: imposta il tasto come root (reset pitch shift)
+              // Click senza SHIFT: imposta il tasto come root e resetta il pitch shift
               clearKeyboardActive();
               key.classList.add("active");
               selectedRoot = key.dataset.note;
