@@ -48,7 +48,7 @@
 </head>
 <body>
   <h1>Live Vocoder con Sicurezza Audio</h1>
-  <p>Trasforma la tua voce live con il microfono. Usa le cuffie per proteggere le casse e l'udito.</p>
+  <p>Trasforma la tua voce live. Usa le cuffie per proteggere casse e udito.</p>
   <div id="warningBanner">ATTENZIONE: Le cuffie non sono collegate!</div>
   <button id="startButton" class="game-button">Attiva Microfono</button>
   <div>
@@ -56,13 +56,47 @@
     <input type="range" id="pitchSlider" min="-12" max="12" step="0.1" value="0">
   </div>
   <script>
-    // Crea un AudioContext e avvia Tone.js
+    // --- Rilevamento cuffie ---
+    async function checkHeadphones() {
+      if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const outputs = devices.filter(device => device.kind === "audiooutput");
+          // Prova a trovare un dispositivo il cui label contenga "headphone" o "cuffie"
+          const headphonesConnected = outputs.some(device => {
+            if(device.label) {
+              const lower = device.label.toLowerCase();
+              return lower.includes("headphone") || lower.includes("cuffie");
+            }
+            return false;
+          });
+          if(!headphonesConnected) {
+            document.getElementById("warningBanner").style.display = "block";
+            await Tone.context.suspend();
+          } else {
+            document.getElementById("warningBanner").style.display = "none";
+            if(Tone.context.state === "suspended") {
+              await Tone.context.resume();
+            }
+          }
+        } catch(err) {
+          console.error("Errore durante il controllo delle cuffie:", err);
+        }
+      }
+    }
+    
+    // Aggiungi listener per il devicechange
+    if(navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener('devicechange', checkHeadphones);
+    }
+    
+    // --- Setup Tone.js e nodi ---
     const audioCtx = Tone.context;
     let mic, pitchShift, compressor;
     
-    // Configura un DynamicsCompressorNode come limiter
+    // Crea un DynamicsCompressorNode per limitare i picchi (limiter)
     compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -20;
+    compressor.threshold.value = -20;  // soglia in dB
     compressor.knee.value = 30;
     compressor.ratio.value = 12;
     compressor.attack.value = 0.003;
@@ -70,57 +104,38 @@
     // Collega il compressor all'uscita
     compressor.connect(audioCtx.destination);
     
-    // Crea il nodo PitchShift e collegalo al compressor
+    // Crea il nodo PitchShift (inizialmente 0 semitoni, cioè nessuna modifica)
     pitchShift = new Tone.PitchShift(0);
+    // Collega il PitchShift al compressor
     pitchShift.connect(compressor);
     
-    // Funzione per regolare il pitch
-    function setPitch(semitones) {
-      document.getElementById("pitchValue").textContent = semitones;
-      pitchShift.pitch = semitones;
-    }
-    
-    // Gestione dello slider
+    // --- Gestione dello slider ---
     const pitchSlider = document.getElementById("pitchSlider");
+    const pitchValueDisplay = document.getElementById("pitchValue");
     pitchSlider.addEventListener("input", () => {
-      setPitch(parseFloat(pitchSlider.value));
+      const semitones = parseFloat(pitchSlider.value);
+      pitchValueDisplay.textContent = semitones;
+      if(pitchShift) {
+        pitchShift.pitch = semitones;
+      }
     });
     
-    // Rilevamento cuffie (approccio sperimentale)
-    async function checkHeadphones() {
-      if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const outputs = devices.filter(device => device.kind === "audiooutput");
-        // Controlla se almeno uno dei dispositivi contiene "headphone" (in minuscolo)
-        const headphones = outputs.find(device => device.label.toLowerCase().includes("headphone"));
-        if(!headphones) {
-          document.getElementById("warningBanner").style.display = "block";
-          // Puoi sospendere l'audio se vuoi:
-          // audioCtx.suspend();
-        } else {
-          document.getElementById("warningBanner").style.display = "none";
-          // audioCtx.resume();
-        }
-      }
-    }
-    
-    // Gestisci l'evento di cambio dispositivo
-    if(navigator.mediaDevices) {
-      navigator.mediaDevices.addEventListener('devicechange', checkHeadphones);
-    }
-    
-    // Avvia il microfono e collega il flusso
+    // --- Avvio Microfono e Catena Audio ---
     document.getElementById("startButton").addEventListener("click", async () => {
+      // Riattiva il contesto in risposta ad un'interazione
+      await Tone.start();
+      console.log("Tone.js AudioContext avviato");
+      
+      // Crea il nodo UserMedia per il microfono
+      mic = new Tone.UserMedia();
+      // Collega il microfono al nodo PitchShift
+      mic.connect(pitchShift);
+      
+      // Richiedi l'accesso al microfono
       try {
-        // Riattiva il contesto in risposta a un'interazione utente
-        await Tone.start();
-        // Crea un oggetto UserMedia per il microfono
-        mic = new Tone.UserMedia();
-        // Collega il microfono al nodo PitchShift
-        mic.connect(pitchShift);
         await mic.open();
         console.log("Microfono attivato");
-        // Controlla i dispositivi di output
+        // Controlla se le cuffie sono collegate
         checkHeadphones();
       } catch (err) {
         console.error("Errore nell'apertura del microfono:", err);
