@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allenamento Note sul Pentagramma</title>
+  <!-- Includi VexFlow per disegnare il pentagramma -->
+  <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
+  <!-- Google Fonts: Roboto -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  
+  <!-- Include Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Stili per l'input con floating label */
+    .input-container {
+      position: relative;
+      margin: 20px auto;
+      max-width: 300px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+    }
+    .input-container input {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      background: #fff;
+    }
+    .input-container input:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 5px rgba(0,123,255,0.5);
+    }
+    .input-container label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      color: #aaa;
+      font-size: 16px;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      background-color: white;
+      padding: 0 4px;
+    }
+    .input-container input:focus + label,
+    .input-container input:not(:placeholder-shown) + label {
+      top: -10px;
+      left: 10px;
+      font-size: 12px;
+      color: #007bff;
+    }
+
+    /* Generale */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f5f5f5;
+      text-align: center;
+      padding: 20px;
+      position: relative;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      margin: 0 auto;
+    }
+    .home-button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s;
+    }
+    .home-button:hover {
+      background: #0056b3;
+      transform: scale(1.05);
+    }
+    h1 { font-size: 22px; }
+
+    /* Pannello di Configurazione */
+    #config-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto 10px auto;
+      background: #fff;
+      position: relative;
+    }
+    /* Aggiunto elemento per il messaggio finale */
+    #final-score {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+    }
+    /* Riferimento in prima pagina, sempre visibile */
+    #refTop {
+      margin-bottom: 10px;
+    }
+    #refTop img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+    #config-panel h2 { margin-bottom: 10px; font-size: 20px; }
+    .config-group {
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .config-group label,
+    .config-group p {
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    /* Radio group */
+    .radio-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 5px;
+    }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      background: #ffd700;
+      color: #000;
+      border-color: #ccc;
+    }
+
+    .game-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #ffd700;
+      color: #000;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      margin-top: 10px;
+    }
+    /* Bottone "Visualizza Classifica" verde */
+    #view-leaderboard {
+      background: #28a745;
+    }
+    #view-leaderboard:hover {
+      background: #218838;
+    }
+    .game-button:hover { transform: scale(1.05); }
+
+    /* Pannello di Gioco */
+    #game-panel {
+      display: none;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 0 auto 10px auto;
+      background: #fff;
+    }
+    /* Timer */
+    #timer-container {
+      width: 100%;
+      max-width: 600px;
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      margin: 10px auto;
+      overflow: hidden;
+    }
+    #timer-bar {
+      height: 100%;
+      width: 100%;
+      background: #007bff;
+      transition: width 0.05s linear;
+    }
+    .time-warning {
+      animation: blinkRed 1s infinite;
+    }
+    @keyframes blinkRed {
+      0% { background-color: #007bff; }
+      50% { background-color: red; }
+      100% { background-color: #007bff; }
+    }
+    /* Scoreboard & Bonus */
+    #scoreboard {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    /* BONUS BUTTON */
+    #bonus-indicator {
+      display: inline-block;
+      padding: 8px 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #ccc;
+      color: #000;
+      margin: 5px;
+      min-width: 130px;
+      transition: background 0.3s;
+    }
+    #bonus-indicator.bonus-active {
+      background-color: red;
+      color: #fff;
+      animation: bonusPulse 0.5s infinite;
+    }
+    @keyframes bonusPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    #bonus-indicator.rainbow {
+      animation: rainbowCycle 3s linear infinite, bonusPulse 0.5s infinite;
+      color: #fff;
+    }
+    @keyframes rainbowCycle {
+      0% { background-color: red; }
+      16.67% { background-color: yellow; }
+      33.33% { background-color: blue; }
+      50% { background-color: red; }
+      66.67% { background-color: yellow; }
+      83.33% { background-color: blue; }
+      100% { background-color: red; }
+    }
+    /* Pentagramma: contenitore ridotto e disegno centrato */
+    #notationWrapper {
+      width: 220px;  /* area di visualizzazione */
+      height: 200px;
+      margin: 20px auto;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    /* Bottoni Risposta: di default in un'unica riga */
+    .answer-buttons {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+      overflow-x: auto;
+    }
+    .answer-button {
+      flex: 1 1 100px;
+      max-width: 150px;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      margin: 5px;
+    }
+    .answer-button:hover {
+      transform: scale(1.05);
+    }
+    /* Su schermi piccoli i bottoni vanno a capo */
+    @media (max-width: 480px) {
+      .answer-buttons {
+        flex-wrap: wrap;
+      }
+      .answer-button {
+        font-size: 14px;
+        padding: 8px 10px;
+      }
+    }
+    
+    /* Feedback */
+    #result {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+      min-height: 24px;
+    }
+    
+    /* Nel pannello di gioco, il riferimento è nascosto di default e l'immagine si adatta */
+    #game-panel #referenceContainer {
+      display: none;
+    }
+    #game-panel #referenceContainer img {
+      width: 100%;
+      height: auto;
+    }
+    
+    /* Pannello Leaderboard */
+    #leaderboard-panel {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 600px;
+      margin: 10px auto;
+      background: linear-gradient(135deg, #f1f1f1, #e9e9e9);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: none;
+      position: relative;
+    }
+    #leaderboard-panel h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    #leaderboard-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #leaderboard-panel th,
+    #leaderboard-panel td {
+      padding: 6px;
+      border: 1px solid #888;
+      font-size: 14px;
+    }
+    #leaderboard-panel tr:nth-child(even) {
+      background: #e9e9e9;
+    }
+    #leaderboard-panel tr.highlight {
+      background: rgb(255, 217, 0);
+    }
+    /* Bottone per chiudere la classifica */
+    #close-leaderboard {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 10px;
+      font-size: 14px;
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    #close-leaderboard:hover {
+      background: #c82333;
+      transform: scale(1.05);
+    }
+
+    /* Bottone Admin */
+    #admin-btn {
+      font-size: 12px;
+      padding: 4px 6px;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    /* Admin Login e Panel */
+    #admin-login {
+      border: 1px solid #777;
+      padding: 8px;
+      margin: 10px auto;
+      max-width: 300px;
+      border-radius: 4px;
+      background: #eee;
+      display: none;
+    }
+    #admin-login input[type="password"] {
+      padding: 4px;
+      font-size: 14px;
+      width: 80%;
+      margin-bottom: 5px;
+    }
+    #admin-panel {
+      border: 1px solid #aaa;
+      padding: 8px;
+      border-radius: 6px;
+      max-width: 600px;
+      margin: 5px auto;
+      background: #f9f9f9;
+      display: none;
+    }
+    #admin-panel h3 {
+      margin-top: 0;
+      font-size: 16px;
+    }
+    #admin-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #admin-panel th,
+    #admin-panel td {
+      border: 1px solid #777;
+      padding: 4px;
+      text-align: center;
+      font-size: 13px;
+    }
+    #admin-panel button {
+      margin: 2px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .flash-correct {
+  background: #28a745 !important;
+  transform: scale(1.1) !important;
+}
+
+.flash-wrong {
+  background: #dc3545 !important;
+  transform: scale(1.1) !important;
+}
+
+  </style>
+
+  <!-- Firebase Initialization -->
+
+  
+</head>
+<body>
+  <header>
+    <a href="https://bradipogio.github.io/teoria_musicale/indice.html" class="home-button">🏠 Home</a>
+    <h1>Allenamento Note sul Pentagramma</h1>
+  </header>
+  
+  <!-- Pannello di Configurazione -->
+  <div id="config-panel" class="container">
+    <!-- Riferimento in prima pagina, sempre visibile -->
+    <div id="refTop">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/notenew.png?raw=true" alt="Riferimento">
+    </div>
+    <h2>Impostazioni di Gioco</h2>
+    <!-- Elemento per mostrare il punteggio finale -->
+    <div id="final-score"></div>
+    <!-- Input per il nome (default "giocatore" se vuoto) -->
+    <div class="input-container">
+      <input type="text" id="player-name" placeholder=" ">
+      <label for="player-name">Inserisci il tuo nome</label>
+    </div>
+    <div class="config-group">
+      <p>Seleziona Chiave:</p>
+      <div class="radio-group" id="clefRadioGroup">
+        <input type="radio" id="treble" name="clef" value="treble" checked>
+        <label for="treble">Violino</label>
+        <input type="radio" id="bass" name="clef" value="bass">
+        <label for="bass">Basso</label>
+        <input type="radio" id="random" name="clef" value="random">
+        <label for="random">Random</label>
+      </div>
+    </div>
+    <div class="config-group">
+      <p>Difficoltà:</p>
+      <div class="radio-group">
+        <input type="radio" id="easy" name="difficulty" value="easy" checked>
+        <label for="easy">Facile</label>
+        <input type="radio" id="hard" name="difficulty" value="hard">
+        <label for="hard">Difficile</label>
+      </div>
+    </div>
+    <button id="startGame" class="game-button">Inizia Gioco</button>
+  </div>
+  
+  <!-- Pannello di Gioco -->
+  <div id="game-panel" class="container">
+        <!-- Bottone toggle riferimento (nascosto all'inizio) -->
+        <button class="game-button" id="toggleReference">Mostra Riferimento</button>
+        <div id="referenceContainer">
+          <img src="https://github.com/bradipogio/teoria_musicale/blob/main/notenew.png?raw=true" alt="Riferimento">
+        </div>
+    <div id="timer-container">
+      <div id="timer-bar"></div>
+    </div>
+    <div id="scoreboard">Punteggio: 0</div>
+    <div id="bonus-indicator">Bonus</div>
+    <!-- Pentagramma senza scaleFactor -->
+    <div id="notationWrapper">
+      <div id="notation"></div>
+    </div>
+
+    <!-- Pulsanti risposta in una riga (default una sola riga) -->
+    <div class="answer-buttons">
+      <button class="answer-button" data-key="C">Do</button>
+      <button class="answer-button" data-key="D">Re</button>
+      <button class="answer-button" data-key="E">Mi</button>
+      <button class="answer-button" data-key="F">Fa</button>
+      <button class="answer-button" data-key="G">Sol</button>
+      <button class="answer-button" data-key="A">La</button>
+      <button class="answer-button" data-key="B">Si</button>
+    </div>
+    <div id="result"></div>
+    <button id="endGame" class="game-button">Termina Gioco</button>
+  </div>
+  
+  <!-- Pannello Leaderboard -->
+  <div id="leaderboard-panel">
+    <h2>Classifica</h2>
+    <div id="leaderboard-content"></div>
+    <button id="close-leaderboard" class="game-button">Chiudi Classifica</button>
+  </div>
+  
+    
+  <script>
+    // Variabili globali per il gioco
+    let score = 0, correctCount = 0, wrongCount = 0, consecutiveCorrect = 0;
+    let gameActive = false;
+    const FIXED_DURATION = 60000; // 60 secondi
+    let globalTimerInterval, gameEndTime;
+    let gameDifficulty = "easy";  // per memorizzare la difficoltà
+    let trialMode = false; // Modalità Prova
+
+    // Note e mapping
+    const notes = ["C", "D", "E", "F", "G", "A", "B"];
+    let currentNote = "";
+    let currentClef = "treble";
+    let currentPitch = "";
+    let lastNote = "";
+    
+    const italianNoteNames = { "C": "Do", "D": "Re", "E": "Mi", "F": "Fa", "G": "Sol", "A": "La", "B": "Si" };
+    const bassTransposition = { "C": "E", "D": "F", "E": "G", "F": "A", "G": "B", "A": "C", "B": "D" };
+    
+    // Mapping per VexFlow
+    const trebleEasyMapping = {
+      "C": ["c/4", "c/5"],
+      "D": ["d/4", "d/5"],
+      "E": ["e/4", "e/5"],
+      "F": ["f/4", "f/5"],
+      "G": ["g/4"],
+      "A": ["a/4"],
+      "B": ["b/4"]
+    };
+    const trebleHardMapping = {
+      "C": ["c/4", "c/5", "c/6"],
+      "D": ["d/4", "d/5"],
+      "E": ["e/4", "e/5"],
+      "F": ["f/4", "f/5"],
+      "G": ["g/3", "g/4", "g/5"],
+      "A": ["a/3", "a/4", "a/5"],
+      "B": ["b/3", "b/4", "b/5"]
+    };
+    const bassEasyMapping = {
+      "C": ["c/4", "c/5"],
+      "D": ["d/4", "d/5"],
+      "E": ["e/4", "e/5"],
+      "F": ["f/4", "f/5"],
+      "G": ["g/4"],
+      "A": ["a/4"],
+      "B": ["b/4"]
+    };
+    const bassHardMapping = {
+      "C": ["c/4", "c/5", "c/6"],
+      "D": ["d/4", "d/5"],
+      "E": ["e/4", "e/5"],
+      "F": ["f/4", "f/5"],
+      "G": ["g/3", "g/4", "g/5"],
+      "A": ["a/3", "a/4", "a/5"],
+      "B": ["b/3", "b/4", "b/5"]
+    };
+    
+    // Setup di VexFlow: il pentagramma viene disegnato senza scaleFactor in un'area di 350x250
+    const VF = Vex.Flow;
+    const notationDiv = document.getElementById("notation");
+    function drawNoteWithPitch(pitch, clef) {
+      notationDiv.innerHTML = "";
+      const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
+      renderer.resize(220, 200);
+      const context = renderer.getContext();
+      // Calcolo per centrare la stave in un'area di larghezza 350
+      const staveWidth = 180; 
+      const x = (220 - staveWidth) / 2;  // x = 85
+      const stave = new VF.Stave(x, 40, staveWidth);
+      stave.addClef(clef).setContext(context).draw();
+      const staveNote = new VF.StaveNote({ keys: [pitch], duration: "q" });
+      const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
+      voice.addTickable(staveNote);
+      new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 20);
+      voice.draw(context, stave);
+    }
+    
+    function generateRandomNote() {
+      const randomIndex = Math.floor(Math.random() * notes.length);
+      currentNote = notes[randomIndex];
+      const clefChoice = document.querySelector('input[name="clef"]:checked').value;
+      if (clefChoice === "random") {
+        currentClef = Math.random() < 0.5 ? "treble" : "bass";
+      } else {
+        currentClef = clefChoice;
+      }
+      let diff = gameDifficulty;
+      if (diff === "easy") {
+        if (currentClef === "treble") {
+          const allowed = trebleEasyMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
+        } else {
+          const allowed = bassEasyMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
+        }
+      } else {
+        if (currentClef === "treble") {
+          const allowed = trebleHardMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
+        } else {
+          const allowed = bassHardMapping[currentNote];
+          currentPitch = allowed[Math.floor(Math.random() * allowed.length)];
+        }
+      }
+      if (currentNote === lastNote) {
+        generateRandomNote();
+      } else {
+        drawNoteWithPitch(currentPitch, currentClef);
+        document.getElementById("result").textContent = "";
+        lastNote = currentNote;
+      }
+    }
+    
+    // Animazione del punteggio
+    let displayedScore = 0;
+    function animateScore(finalScore) {
+      let start = displayedScore;
+      let change = finalScore - start;
+      let duration = 1000;
+      let startTime = null;
+      function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let progress = timestamp - startTime;
+        let currentValue = Math.round(start + (change * progress / duration));
+        document.getElementById("scoreboard").textContent = "Punteggio: " + currentValue;
+        if (progress < duration) {
+          requestAnimationFrame(animate);
+        } else {
+          document.getElementById("scoreboard").textContent = "Punteggio: " + finalScore;
+          displayedScore = finalScore;
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+    
+    // Timer
+    function startGlobalTimer(durationMs) {
+      const timerBar = document.getElementById("timer-bar");
+      timerBar.style.width = "100%";
+      gameEndTime = Date.now() + durationMs;
+      globalTimerInterval = setInterval(() => {
+        let remaining = gameEndTime - Date.now();
+        let percent = remaining / durationMs;
+        if (percent < 0) percent = 0;
+        timerBar.style.width = (percent * 100) + "%";
+        if (remaining <= 15000) {
+          timerBar.classList.add("time-warning");
+        } else {
+          timerBar.classList.remove("time-warning");
+        }
+        if (remaining <= 0) {
+          clearInterval(globalTimerInterval);
+          endGameDueToTime();
+        }
+      }, 50);
+    }
+    
+    function endGameDueToTime() {
+      gameActive = false;
+      document.getElementById("result").innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
+      disableAnswerButtons();
+      setTimeout(() => { finishGame(); }, 1500);
+    }
+    
+    function disableAnswerButtons() {
+      document.querySelectorAll(".answer-button").forEach(b => b.disabled = true);
+    }
+    function enableAnswerButtons() {
+      document.querySelectorAll(".answer-button").forEach(b => b.disabled = false);
+    }
+    
+    // Calcolo del punteggio con premi variabili
+    function checkAnswer(button, selectedKey) {
+      disableAnswerButtons();
+      if (currentClef === "bass") {
+        let altNote = bassTransposition[currentNote];
+        if (selectedKey === altNote) {
+          button.classList.add("flash-correct");
+          setTimeout(() => button.classList.remove("flash-correct"), 300);
+          processAnswer(true);
+        } else {
+          button.classList.add("flash-wrong");
+          setTimeout(() => button.classList.remove("flash-wrong"), 300);
+          processAnswer(false);
+        }
+      } else {
+        if (selectedKey === currentNote) {
+          button.classList.add("flash-correct");
+          setTimeout(() => button.classList.remove("flash-correct"), 300);
+          processAnswer(true);
+        } else {
+          button.classList.add("flash-wrong");
+          setTimeout(() => button.classList.remove("flash-wrong"), 300);
+          processAnswer(false);
+        }
+      }
+    }
+    function finishGame() {
+        document.getElementById("game-panel").style.display = "none";
+        document.getElementById("config-panel").style.display = "block";
+        score = 0;
+        consecutiveCorrect = 0;
+      }
+    function processAnswer(isCorrect) {
+      if (isCorrect) {
+        consecutiveCorrect++;
+        let basePoints = (currentClef === "random") ? 200 : 100;
+        if (gameDifficulty === "hard") {
+          basePoints *= 2;
+        }
+        let bonusMultiplier = 1;
+        if (currentClef === "random") {
+          bonusMultiplier = 3;
+        }
+        if (gameDifficulty === "hard") {
+          bonusMultiplier *= 2;
+        }
+        let bonus = (consecutiveCorrect >= 3) ? Math.round(bonusMultiplier * 5 * Math.pow(1.2, consecutiveCorrect - 3)) : 0;
+        let pointsAwarded = basePoints + bonus;
+        score += pointsAwarded;
+        document.getElementById("result").innerHTML = "<span style='color: green;'>Corretto! +" + pointsAwarded + " punti</span>";
+        if (consecutiveCorrect >= 3 && consecutiveCorrect < 10) {
+          document.getElementById("bonus-indicator").classList.remove("rainbow");
+          document.getElementById("bonus-indicator").classList.add("bonus-active");
+          document.getElementById("bonus-indicator").textContent = "Bonus +" + bonus;
+        } else if (consecutiveCorrect >= 10) {
+          document.getElementById("bonus-indicator").classList.remove("bonus-active");
+          document.getElementById("bonus-indicator").classList.add("rainbow");
+          document.getElementById("bonus-indicator").textContent = "Bonus +" + bonus;
+        } else {
+          document.getElementById("bonus-indicator").classList.remove("bonus-active", "rainbow");
+          document.getElementById("bonus-indicator").textContent = "Bonus";
+        }
+        animateScore(score);
+        setTimeout(() => {
+          generateRandomNote();
+          enableAnswerButtons();
+        }, 150);
+        setTimeout(() => { document.getElementById("result").innerHTML = ""; }, 1500);
+      } else {
+        let penalty = Math.floor(score / 10);
+        score = Math.max(0, score - penalty);
+        consecutiveCorrect = 0;
+        document.getElementById("result").innerHTML = "<span style='color: red;'>Sbagliato! (-" + penalty + ")</span>";
+        document.getElementById("bonus-indicator").classList.remove("bonus-active", "rainbow");
+        document.getElementById("bonus-indicator").textContent = "Bonus";
+        animateScore(score);
+        setTimeout(() => {
+          enableAnswerButtons();
+          setTimeout(() => { document.getElementById("result").innerHTML = ""; }, 1500);
+        }, 150);
+      }
+    }
+    
+    // Event listener per i bottoni risposta
+    document.querySelectorAll(".answer-button").forEach(button => {
+      button.addEventListener("click", function() {
+        if (!gameActive) return;
+        let selectedKey = this.getAttribute("data-key");
+        checkAnswer(this, selectedKey);
+      });
+    });
+    
+    // Avvio del gioco (Modalità Normale)
+    document.getElementById("startGame").addEventListener("click", function() {
+      trialMode = false;
+      gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
+      let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
+      document.getElementById("player-name").value = playerNameInput;
+      score = 0; consecutiveCorrect = 0;
+      document.getElementById("scoreboard").style.display = "block";
+      document.getElementById("result").textContent = "";
+      document.getElementById("bonus-indicator").classList.remove("bonus-active", "rainbow");
+      document.getElementById("bonus-indicator").textContent = "Bonus";
+      document.getElementById("final-score").textContent = "";
+      document.getElementById("config-panel").style.display = "none";
+      document.getElementById("game-panel").style.display = "block";
+      gameActive = true;
+      generateRandomNote();
+      startGlobalTimer(FIXED_DURATION);
+    });
+    
+ 
+    
+    // Termina il gioco (in entrambe le modalità, non registra il risultato)
+    document.getElementById("endGame").addEventListener("click", function() {
+      clearInterval(globalTimerInterval);
+      gameActive = false;
+      // Visualizza il messaggio di fine gioco nel pannello di configurazione
+      document.getElementById("final-score").textContent = "Gioco terminato! Punteggio finale: " + score;
+      document.getElementById("game-panel").style.display = "none";
+      document.getElementById("config-panel").style.display = "block";
+    });
+    
+    // Toggle del riferimento nel pannello di gioco
+    const toggleReferenceButton = document.getElementById("toggleReference");
+    const referenceContainer = document.getElementById("referenceContainer");
+    toggleReferenceButton.addEventListener("click", function() {
+      if (referenceContainer.style.display === "none" || referenceContainer.style.display === "") {
+        referenceContainer.style.display = "block";
+        toggleReferenceButton.textContent = "Chiudi Riferimento";
+      } else {
+        referenceContainer.style.display = "none";
+        toggleReferenceButton.textContent = "Mostra Riferimento";
+      }
+    });
+    
+    
+    
+  </script>
+</body>
+</html>
