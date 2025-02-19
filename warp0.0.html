@@ -26,7 +26,7 @@
       transition: background 0.3s, transform 0.2s;
       margin: 10px;
     }
-    /* Bottone record (rosso) */
+    /* Bottone Record (rosso) */
     #recordButton {
       background: #ff4d4d;
       color: #fff;
@@ -39,7 +39,7 @@
       50% { border-color: #000; }
       100% { border-color: #fff; }
     }
-    /* Bottone play/pausa (verde) */
+    /* Bottone Play/Pausa (verde) */
     #playPauseButton {
       background: #28a745;
       color: #fff;
@@ -79,7 +79,7 @@
       margin-top: 10px;
       color: #333;
     }
-    /* Modal microfono */
+    /* Modal per il microfono */
     #microphonePrompt {
       position: fixed;
       top: 0;
@@ -99,7 +99,7 @@
       text-align: center;
       width: 300px;
     }
-    /* Tastiera – ispirata al tuo esempio */
+    /* Tastiera – stile preso dal tuo esempio */
     #keyboard {
       position: relative;
       width: 90%;
@@ -242,26 +242,16 @@
       const bufferLength = liveAnalyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       liveAnalyser.getByteTimeDomainData(dataArray);
-      // Amplifica l'ampiezza: sottrai 128 e moltiplica per 2
+      // Disegna un waveform più "corposo"
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#007bff";
-      ctx.beginPath();
       const sliceWidth = canvas.width / bufferLength;
-      let x = 0;
-      for(let i = 0; i < bufferLength; i++){
-        let v = (dataArray[i] - 128) * 2; // variazioni in range [-256,256]
+      ctx.fillStyle = "#007bff";
+      for (let i = 0; i < bufferLength; i++){
+        let v = (dataArray[i] - 128) * 2;
         let y = canvas.height/2 - (v * (canvas.height/256));
-        if(i===0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-        x += sliceWidth;
+        ctx.fillRect(i * sliceWidth, y, sliceWidth, canvas.height - y);
       }
-      ctx.lineTo(canvas.width, canvas.height/2);
-      ctx.stroke();
       liveAnimationFrame = requestAnimationFrame(drawLiveWaveform);
     }
     function stopLiveVisualization() {
@@ -325,16 +315,15 @@
     function updateDebug() {
       debugChunks.textContent = "Audio chunks: " + audioChunks.length;
     }
-    // Disegna il waveform finale normalizzato
     function drawFinalWaveform() {
       if(!audioBuffer) return;
       const rawData = audioBuffer.getChannelData(0);
       const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
       let filteredData = [];
-      for(let i=0; i < samples; i++){
+      for(let i=0; i<samples; i++){
         let sum = 0;
-        for(let j=0; j < blockSize; j++){
+        for(let j=0; j<blockSize; j++){
           sum += Math.abs(rawData[i*blockSize+j]);
         }
         filteredData.push(sum/blockSize);
@@ -343,8 +332,8 @@
       ctx.clearRect(0,0,canvas.width, canvas.height);
       ctx.fillStyle = "#007bff";
       const middle = canvas.height/2;
-      for(let i=0; i < samples; i++){
-        let norm = maxVal>0 ? filteredData[i]/maxVal : 0;
+      for(let i=0; i<samples; i++){
+        let norm = maxVal > 0 ? filteredData[i]/maxVal : 0;
         let y = norm * canvas.height;
         ctx.fillRect(i, middle - y/2, 1, y);
       }
@@ -418,7 +407,6 @@
       }
       loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
     });
-    // Funzione per avviare la riproduzione (con pitch shift se attivo)
     function startPlayback() {
       sourceNodes = [];
       const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
@@ -456,11 +444,25 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Mappa per i tasti (con offset in semitoni)
+    // Definisci octaveNotes (necessario per generare la tastiera)
+    const octaveNotes = [
+      { note: 'C', type: 'white' },
+      { note: 'C#', type: 'black' },
+      { note: 'D', type: 'white' },
+      { note: 'D#', type: 'black' },
+      { note: 'E', type: 'white' },
+      { note: 'F', type: 'white' },
+      { note: 'F#', type: 'black' },
+      { note: 'G', type: 'white' },
+      { note: 'G#', type: 'black' },
+      { note: 'A', type: 'white' },
+      { note: 'A#', type: 'black' },
+      { note: 'B', type: 'white' }
+    ];
+    // Mappa per i tasti
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
-    // Genera tastiera in 2 ottave
     const numOctaves = 2;
     const containerWidth = keyboard.clientWidth;
     const totalWhiteKeys = numOctaves * 7;
@@ -469,7 +471,6 @@
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = whiteKeyHeight * 0.6;
     let whiteKeyCount = 0;
-    // Genera tasti
     for(let o = 0; o < numOctaves; o++){
       for(let i = 0; i < 12; i++){
         let noteObj = octaveNotes[i];
@@ -478,7 +479,6 @@
           let key = document.createElement("div");
           key.classList.add("white-key");
           key.dataset.note = fullNote;
-          // Imposta data-offset in base alla mappa
           key.setAttribute("data-offset", whiteMapping[noteObj.note]);
           key.style.width = whiteKeyWidth + "px";
           key.style.height = whiteKeyHeight + "px";
@@ -489,23 +489,18 @@
           key.appendChild(label);
           keyboard.appendChild(key);
           whiteKeyCount++;
-          // Click senza SHIFT: imposta il root (rimuove ogni pitch shift)
           key.addEventListener("click", (e) => {
-            if(e.shiftKey) return; // gestito solo nel listener SHIFT
+            if(e.shiftKey) return;
             clearKeyboardActive();
             key.classList.add("active");
-            activeChordOffsets = []; // rimuovi pitch shift
-            // Se in riproduzione, aggiorna il playback con le nuove impostazioni
-            if(isPlaying) {
-              stopPlaybackAndRestart();
-            }
+            activeChordOffsets = []; // rimuove eventuali pitch shift
+            if(isPlaying) stopPlaybackAndRestart();
           });
         } else {
           let key = document.createElement("div");
           key.classList.add("black-key");
           key.dataset.note = fullNote;
           key.setAttribute("data-offset", blackMapping[noteObj.note]);
-          // Posiziona il tasto nero: usa il conteggio dei bianchi precedenti
           let baseLeft = ((whiteKeyCount - 1) * whiteKeyWidth) + whiteKeyWidth - (blackKeyWidth/2);
           key.style.width = blackKeyWidth + "px";
           key.style.height = blackKeyHeight + "px";
@@ -513,7 +508,6 @@
           keyboard.appendChild(key);
           key.addEventListener("click", (e) => {
             e.stopPropagation();
-            // Toggle pitch shift: se SHIFT (o per i tasti neri, sempre) attiva/disattiva
             if(key.classList.contains("active")){
               key.classList.remove("active");
               const offset = parseInt(key.getAttribute("data-offset"));
@@ -524,9 +518,7 @@
               activeChordOffsets.push(offset);
             }
             console.log("Active chord offsets:", activeChordOffsets);
-            if(isPlaying) {
-              stopPlaybackAndRestart();
-            }
+            if(isPlaying) stopPlaybackAndRestart();
           });
         }
       }
@@ -535,7 +527,6 @@
       const keys = keyboard.querySelectorAll(".white-key, .black-key");
       keys.forEach(k => k.classList.remove("active"));
     }
-    // Funzione per fermare e riavviare la riproduzione (per aggiornare il pitch shift)
     function stopPlaybackAndRestart() {
       sourceNodes.forEach(src => {
         try { src.stop(); } catch(e){ }
