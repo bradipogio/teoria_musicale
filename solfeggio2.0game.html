@@ -360,94 +360,9 @@
     <div id="result"></div>
     <button id="endGame" class="game-button">Termina Gioco</button>
   </div>
-  
-  <!-- Pannello Leaderboard -->
-  <div id="leaderboard-panel">
-    <h2>Classifica Globale</h2>
-    <div id="leaderboard-content"></div>
-    <button id="close-leaderboard" class="game-button">Chiudi Classifica</button>
-  </div>
-  
-  <!-- Pannello Admin (opzionale) -->
-  <button id="admin-btn" class="game-button2" style="display:none;">*</button>
-  <div id="admin-login" style="display:none;">
-    <p>Inserisci la password admin:</p>
-    <input type="password" id="admin-password" placeholder="Password">
-    <button id="admin-login-btn" class="game-button">Login</button>
-  </div>
-  <div id="admin-panel" style="display:none;">
-    <div id="admin-metrics">
-      <p><strong>Visite Totali:</strong> <span id="totalVisits">0</span></p>
-      <p><strong>Visitatori Unici:</strong> <span id="uniqueVisitors">0</span></p>
-      <p><strong>Partite Giocate:</strong> <span id="gamesPlayed">0</span></p>
-    </div>
-    <h3>Modifica Classifica Globale</h3>
-    <div id="admin-leaderboard"></div>
-    <button id="admin-clear" class="game-button">Cancella Tutti i Punteggi</button>
-  </div>
-  
-  <script>
-    (function() {
-      /* ===============================
-         Gestione Leaderboard Globale tramite API
-         =============================== */
 
-      
-      async function getGlobalLeaderboardData() {
-        try {
-          const response = await fetch('leaderboard.json');
-          return await response.json();
-        } catch (e) {
-          console.error("Errore leggendo la leaderboard globale:", e);
-          return [];
-        }
-      }
-      
-      async function renderGlobalLeaderboard() {
-        let leaderboard = await getGlobalLeaderboardData();
-        let content = "<table>";
-        content += "<tr><th>Rank</th><th>Nome</th><th>Punteggio</th><th>Azioni</th></tr>";
-        leaderboard.forEach((entry, index) => {
-          content += `<tr data-timestamp="${entry.timestamp}"><td>${index+1}</td><td>${entry.name}</td><td>${entry.score}</td>
-                      <td><button class="admin-delete" data-timestamp="${entry.timestamp}">Elimina</button></td></tr>`;
-        });
-        content += "</table>";
-        return content;
-      }
-      
-      async function deleteGlobalLeaderboardEntry(timestamp) {
-        try {
-          await fetch('/api/deleteLeaderboardEntry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ timestamp: timestamp })
-          });
-          console.log("Entry eliminata dalla leaderboard globale.");
-        } catch (e) {
-          console.error("Errore eliminando l'entry globale:", e);
-        }
-      }
-      
-      async function clearGlobalLeaderboard() {
-        try {
-          await fetch('/api/clearLeaderboard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          console.log("Leaderboard globale cancellata.");
-        } catch (e) {
-          console.error("Errore cancellando la leaderboard globale:", e);
-        }
-      }
-      /* ===============================
-         Fine gestione Leaderboard Globale
-         =============================== */
-      
-      // Dummy: Simulazione aggiornamento contatore partite
-      function updateGamePlayedCounter() {
-        console.log("Simulazione aggiornamento contatore partite.");
-      }
-      
+  
+  <script>      
       /* ===============================
          Variabili globali e logica di gioco
          =============================== */
@@ -656,7 +571,6 @@
         if (!trialMode) {
           let playerName = document.getElementById("player-name").value.trim() || "giocatore";
           // Invia il risultato globale per aggiornare il file JSON tramite GitHub Action
-          await updateGlobalLeaderboard(playerName, score);
         }
         score = 0;
         consecutiveCorrect = 0;
@@ -670,6 +584,7 @@
         gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
         let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
         document.getElementById("player-name").value = playerNameInput;
+        enableAnswerButtons()
         currentClef = "treble";
         score = 0;
         consecutiveCorrect = 0;
@@ -679,7 +594,6 @@
         document.getElementById("config-panel").style.display = "none";
         document.getElementById("game-panel").style.display = "block";
         gameActive = true;
-        updateGamePlayedCounter();
         generateRandomDurationNote();
         startGlobalTimer(GAME_DURATION);
       });
@@ -719,88 +633,8 @@
         }
       });
       
-      document.getElementById("view-leaderboard").addEventListener("click", function() {
-        // Recupera e mostra la leaderboard globale
-        renderGlobalLeaderboard().then(content => {
-          document.getElementById("leaderboard-content").innerHTML = content;
-          document.getElementById("leaderboard-panel").style.display = "block";
-          setTimeout(() => { scrollToHighlighted(); }, 100);
-        });
-        document.getElementById("config-panel").style.display = "none";
-      });
+        
       
-      document.getElementById("close-leaderboard").addEventListener("click", function() {
-        document.getElementById("leaderboard-panel").style.display = "none";
-        document.getElementById("config-panel").style.display = "block";
-      });
-      
-      // Eventi Admin: eliminazione e cancellazione della leaderboard globale
-      document.addEventListener("click", async function(e) {
-        if (e.target && e.target.classList.contains("admin-delete")) {
-          let ts = e.target.getAttribute("data-timestamp");
-          await deleteGlobalLeaderboardEntry(ts);
-          document.getElementById("admin-leaderboard").innerHTML = await renderGlobalLeaderboard();
-        }
-      });
-      
-      const adminBtn = document.getElementById("admin-btn");
-      const adminLoginDiv = document.getElementById("admin-login");
-      const adminPanelDiv = document.getElementById("admin-panel");
-      const adminLoginBtn = document.getElementById("admin-login-btn");
-      const adminPasswordInput = document.getElementById("admin-password");
-      
-      adminBtn.addEventListener("click", function() {
-        adminLoginDiv.style.display = "block";
-        adminPasswordInput.focus();
-      });
-      
-      adminLoginBtn.addEventListener("click", function() {
-        const pass = adminPasswordInput.value;
-        if (pass === "admin123") {
-          adminLoginDiv.style.display = "none";
-          adminPanelDiv.style.display = "block";
-          renderGlobalLeaderboard().then(content => {
-            document.getElementById("admin-leaderboard").innerHTML = content;
-          });
-        } else {
-          alert("Password errata!");
-        }
-        adminPasswordInput.value = "";
-      });
-      
-      adminPasswordInput.addEventListener("keydown", function(event) {
-        if (event.key === "Enter") {
-          adminLoginBtn.click();
-        }
-      });
-      
-      document.getElementById("admin-clear").addEventListener("click", async function() {
-        if (confirm("Sei sicuro di voler cancellare tutta la classifica globale?")) {
-          await clearGlobalLeaderboard();
-          document.getElementById("admin-leaderboard").innerHTML = await renderGlobalLeaderboard();
-        }
-      });
-      
-      function scrollToHighlighted() {
-        const container = document.getElementById("leaderboard-content");
-        const highlightedRow = container.querySelector(".highlight");
-        if (!highlightedRow) return;
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-        const targetScroll = highlightedRow.offsetTop - (container.clientHeight / 2) + (highlightedRow.clientHeight / 2);
-        const startScroll = container.scrollTop;
-        const distance = targetScroll - startScroll;
-        const duration = 1500;
-        const startTime = performance.now();
-        function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-        function animate(currentTime) {
-          const elapsed = currentTime - startTime;
-          const t = Math.min(elapsed / duration, 1);
-          const easedT = easeOutCubic(t);
-          container.scrollTop = startScroll + distance * easedT;
-          if (t < 1) { requestAnimationFrame(animate); }
-        }
-        requestAnimationFrame(animate);
-      }
       
     })();
   </script>
