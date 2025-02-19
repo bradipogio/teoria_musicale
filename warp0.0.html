@@ -66,6 +66,7 @@
       width: 600px;
       height: 150px;
     }
+    /* Selezione loop e handle */
     #selection {
       position: absolute;
       top: 0;
@@ -74,6 +75,16 @@
       pointer-events: none;
       display: none;
     }
+    .handle {
+      position: absolute;
+      top: 0;
+      width: 5px;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      cursor: ew-resize;
+      pointer-events: all;
+    }
+    /* Debug */
     #debugChunks {
       font-size: 14px;
       margin-top: 10px;
@@ -117,7 +128,6 @@
       background: #fff;
       border: 1px solid #000;
     }
-    /* Utilizziamo la stessa classe 'active' per evidenziare sia il root che il pitch shift attivo */
     .white-key.active, .black-key.active {
       background: #ffd700;
     }
@@ -167,7 +177,10 @@
   </div>
   <div id="waveform">
     <canvas id="canvas" width="600" height="150"></canvas>
-    <div id="selection"></div>
+    <div id="selection">
+      <div id="leftHandle" class="handle" style="left:0;"></div>
+      <div id="rightHandle" class="handle" style="right:0;"></div>
+    </div>
   </div>
   <div id="debugChunks">Audio chunks: 0</div>
 
@@ -183,10 +196,11 @@
     let recordedBlob = null;
     let isRecording = false;
     let isPlaying = false;
-    // Imposta loop ON di default
+    // Loop ON di default
     let isLoopMode = true;
-    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi per il pitch shift
+    let activeChordOffsets = [];  // array degli offset attivi (in semitoni) per il pitch shift
     let sourceNodes = [];         // array dei BufferSource per la riproduzione
+    let selectedRoot = null;      // Nota root selezionata (es. "C4")
 
     // Per live visualization
     let liveAnalyser = null;
@@ -203,6 +217,8 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const selectionDiv = document.getElementById('selection');
+    const leftHandle = document.getElementById('leftHandle');
+    const rightHandle = document.getElementById('rightHandle');
     const debugChunks = document.getElementById('debugChunks');
     const keyboard = document.getElementById('keyboard');
 
@@ -262,7 +278,7 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se si inizia una nuova registrazione, ferma eventuali source in riproduzione e resetta tutto
+      // Se si inizia una nuova registrazione, fermare eventuale riproduzione e resettare tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -271,9 +287,9 @@
       }
       activeChordOffsets = [];
       clearKeyboardActive();
+      selectedRoot = null;
       
       if(!isRecording) {
-        // Resetta dati precedenti
         audioChunks = [];
         updateDebug();
         audioBuffer = null;
@@ -350,35 +366,77 @@
       }
     }
 
-    /********** SELEZIONE LOOP **********/
+    /********** SELEZIONE LOOP CON HANDLE **********/
+    // Consenti di trascinare l'intera selezione o i bordi
+    let draggingSelection = false;
+    let draggingLeft = false;
+    let draggingRight = false;
+    let selectionRect = { start: 0, end: 0 }; // in px
+
+    // Eventi sul canvas per la selezione base (clic e trascina per creare la selezione)
     canvas.addEventListener('mousedown', (e) => {
-      isDragging = true;
+      // Se clicchiamo sui handle non facciamo la normale selezione
       const rect = canvas.getBoundingClientRect();
-      dragStartX = e.clientX - rect.left;
-      selection.start = dragStartX;
-      selection.end = dragStartX;
-      updateSelectionDiv();
+      const clickX = e.clientX - rect.left;
+      if(clickX >= parseFloat(selectionDiv.style.left) &&
+         clickX <= parseFloat(selectionDiv.style.left) + parseFloat(selectionDiv.style.width)) {
+        // Se clicchiamo dentro la selezione, potremmo voler spostare l'intera selezione
+        draggingSelection = true;
+      } else {
+        // Altrimenti, iniziamo una nuova selezione
+        draggingSelection = false;
+        selection.start = clickX;
+        selection.end = clickX;
+        updateSelectionDiv();
+      }
+      isDragging = true;
     });
     canvas.addEventListener('mousemove', (e) => {
       if(!isDragging) return;
       const rect = canvas.getBoundingClientRect();
       const currentX = e.clientX - rect.left;
-      selection.end = currentX;
+      if(draggingLeft) {
+        // Trascina solo il bordo sinistro
+        selection.start = currentX;
+      } else if(draggingRight) {
+        // Trascina solo il bordo destro
+        selection.end = currentX;
+      } else if(draggingSelection) {
+        // Sposta l'intera selezione mantenendo la stessa larghezza
+        const width = Math.abs(selection.end - selection.start);
+        let newStart = currentX - width/2;
+        let newEnd = currentX + width/2;
+        // Limitiamo al canvas
+        newStart = Math.max(0, newStart);
+        newEnd = Math.min(canvas.width, newEnd);
+        selection.start = newStart;
+        selection.end = newEnd;
+      } else {
+        // Disegna nuova selezione
+        selection.end = currentX;
+      }
       updateSelectionDiv();
     });
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
-      if(selection.start > selection.end){
+      draggingLeft = false;
+      draggingRight = false;
+      draggingSelection = false;
+      // Assicura che start sia minore di end
+      if(selection.start > selection.end) {
         [selection.start, selection.end] = [selection.end, selection.start];
       }
       updateSelectionDiv();
     });
+
+    // Crea handle (se non esistono già) e aggiungi listener per trascinarli
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
       selectionDiv.style.display = "block";
       selectionDiv.style.left = x + "px";
       selectionDiv.style.width = width + "px";
+      // Se in loop, aggiorna i source
       if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
         const loopStartRatio = x / canvas.width;
         const loopEndRatio = (x + width) / canvas.width;
@@ -387,7 +445,19 @@
           src.loopEnd = loopEndRatio * audioBuffer.duration;
         });
       }
+      // Aggiorna handle
+      leftHandle.style.left = "0px";
+      rightHandle.style.right = "0px";
     }
+    // Listener per gli handle
+    leftHandle.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      draggingLeft = true;
+    });
+    rightHandle.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      draggingRight = true;
+    });
 
     /********** PLAY/PAUSA E LOOP **********/
     rateSlider.addEventListener('input', () => {
@@ -418,10 +488,18 @@
       }
       loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
     });
+    // In startPlayback, se il loop è attivo, avvia il source dal loopStart
     function startPlayback() {
       sourceNodes = [];
       const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
       const voiceGain = 1 / numVoices;
+      let loopStartTime = 0;
+      if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+        const x = Math.min(selection.start, selection.end);
+        const width = Math.abs(selection.end - selection.start);
+        const loopStartRatio = x / canvas.width;
+        loopStartTime = loopStartRatio * audioBuffer.duration;
+      }
       for(let i = 0; i < numVoices; i++){
         let src = audioCtx.createBufferSource();
         src.buffer = audioBuffer;
@@ -451,11 +529,28 @@
         };
         sourceNodes.push(src);
       }
-      sourceNodes.forEach(src => src.start());
+      // Se loop è attivo, fai partire la riproduzione dal loopStart
+      if(isLoopMode) {
+        sourceNodes.forEach(src => src.start(0, loopStartTime));
+      } else {
+        sourceNodes.forEach(src => src.start());
+      }
+    }
+    function stopPlaybackAndRestart() {
+      sourceNodes.forEach(src => {
+        try { src.stop(); } catch(e){ }
+      });
+      sourceNodes = [];
+      if(isPlaying) startPlayback();
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Definisci la variabile octaveNotes (necessaria per generare la tastiera)
+    // Funzione helper per ottenere il valore pitch (0-11)
+    function getPitch(noteStr) {
+      const mapping = { "C":0, "C#":1, "D":2, "D#":3, "E":4, "F":5, "F#":6, "G":7, "G#":8, "A":9, "A#":10, "B":11 };
+      return mapping[noteStr];
+    }
+    // Genera la tastiera in 2 ottave
     const octaveNotes = [
       { note: 'C', type: 'white' },
       { note: 'C#', type: 'black' },
@@ -481,7 +576,6 @@
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = whiteKeyHeight * 0.6;
     let whiteKeyCount = 0;
-    // Genera tastiera
     for(let o = 0; o < numOctaves; o++){
       for(let i = 0; i < 12; i++){
         let noteObj = octaveNotes[i];
@@ -490,6 +584,7 @@
           let key = document.createElement("div");
           key.classList.add("white-key");
           key.dataset.note = fullNote;
+          // Per i tasti bianchi, se vengono cliccati con SHIFT, calcola l'offset rispetto al root
           key.setAttribute("data-offset", whiteMapping[noteObj.note]);
           key.style.width = whiteKeyWidth + "px";
           key.style.height = whiteKeyHeight + "px";
@@ -502,22 +597,35 @@
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
             if(e.shiftKey) {
-              // Toggle pitch shift per tasto bianco: attiva/disattiva e aggiorna riproduzione
-              if(key.classList.contains("active")){
-                key.classList.remove("active");
-                const offset = parseInt(key.getAttribute("data-offset"));
-                activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
+              // Se SHIFT è premuto, e se un root è già selezionato, calcola la differenza
+              if(selectedRoot && selectedRoot !== key.dataset.note) {
+                let rootLetter = selectedRoot.replace(/\d+/,"");
+                let currentLetter = noteObj.note;
+                let diff = getPitch(currentLetter) - getPitch(rootLetter);
+                // Regola per avere intervalli compresi in -6 ... +6
+                if(diff > 6) diff -= 12;
+                if(diff < -6) diff += 12;
+                // Toggle active per il pitch shift
+                if(key.classList.contains("active")){
+                  key.classList.remove("active");
+                  activeChordOffsets = activeChordOffsets.filter(o => o !== diff);
+                } else {
+                  key.classList.add("active");
+                  activeChordOffsets.push(diff);
+                }
               } else {
+                // Se non c'è un root, imposta questo tasto come root e non applica offset
+                clearKeyboardActive();
                 key.classList.add("active");
-                const offset = parseInt(key.getAttribute("data-offset"));
-                activeChordOffsets.push(offset);
+                selectedRoot = key.dataset.note;
+                activeChordOffsets = [];
               }
-              console.log("Active chord offsets:", activeChordOffsets);
               if(isPlaying) stopPlaybackAndRestart();
             } else {
-              // Click senza SHIFT: imposta questo tasto come root e cancella eventuali pitch shift
+              // Click senza SHIFT: imposta il tasto come root e rimuove pitch shift
               clearKeyboardActive();
               key.classList.add("active");
+              selectedRoot = key.dataset.note;
               activeChordOffsets = [];
               if(isPlaying) stopPlaybackAndRestart();
             }
@@ -543,7 +651,6 @@
               const offset = parseInt(key.getAttribute("data-offset"));
               activeChordOffsets.push(offset);
             }
-            console.log("Active chord offsets:", activeChordOffsets);
             if(isPlaying) stopPlaybackAndRestart();
           });
         }
@@ -554,12 +661,92 @@
       keys.forEach(k => k.classList.remove("active"));
     }
     function stopPlaybackAndRestart() {
-      sourceNodes.forEach(src => {
-        try { src.stop(); } catch(e){ }
-      });
+      sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
       sourceNodes = [];
       if(isPlaying) startPlayback();
     }
+    // Helper per i tasti: calcola il pitch (0-11) da una nota (es. "C" o "D#")
+    function getPitch(noteStr) {
+      const mapping = { "C":0, "C#":1, "D":2, "D#":3, "E":4, "F":5, "F#":6, "G":7, "G#":8, "A":9, "A#":10, "B":11 };
+      return mapping[noteStr];
+    }
+
+    /********** PLAYBACK **********/
+    rateSlider.addEventListener('input', () => {
+      rateValue.textContent = rateSlider.value;
+      if(sourceNodes.length > 0) {
+        sourceNodes.forEach(src => {
+          src.playbackRate.value = parseFloat(rateSlider.value);
+        });
+      }
+    });
+    playPauseButton.addEventListener('click', async () => {
+      if(!audioBuffer) return;
+      if(!isPlaying) {
+        if(audioCtx.state === "suspended") await audioCtx.resume();
+        if(sourceNodes.length === 0) startPlayback();
+        isPlaying = true;
+        playPauseButton.textContent = "Pausa";
+      } else {
+        await audioCtx.suspend();
+        isPlaying = false;
+        playPauseButton.textContent = "Play";
+      }
+    });
+    loopButton.addEventListener('click', () => {
+      isLoopMode = !isLoopMode;
+      if(sourceNodes.length > 0) {
+        sourceNodes.forEach(src => src.loop = isLoopMode);
+      }
+      loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
+    });
+    // In startPlayback(), se loop è attivo, avvia dal punto di inizio dell'area selezionata
+    function startPlayback() {
+      sourceNodes = [];
+      const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
+      const voiceGain = 1 / numVoices;
+      let loopStartTime = 0;
+      if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+        const x = Math.min(selection.start, selection.end);
+        const loopStartRatio = x / canvas.width;
+        loopStartTime = loopStartRatio * audioBuffer.duration;
+      }
+      for(let i = 0; i < numVoices; i++){
+        let src = audioCtx.createBufferSource();
+        src.buffer = audioBuffer;
+        src.playbackRate.value = parseFloat(rateSlider.value);
+        if(activeChordOffsets.length > 0) {
+          const offset = activeChordOffsets[i];
+          src.detune.value = offset * 100;
+        }
+        src.loop = isLoopMode;
+        if(isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+          const x = Math.min(selection.start, selection.end);
+          const width = Math.abs(selection.end - selection.start);
+          const loopStartRatio = x / canvas.width;
+          const loopEndRatio = (x + width) / canvas.width;
+          src.loopStart = loopStartRatio * audioBuffer.duration;
+          src.loopEnd = loopEndRatio * audioBuffer.duration;
+        }
+        let gainNode = audioCtx.createGain();
+        gainNode.gain.value = voiceGain;
+        src.connect(gainNode).connect(audioCtx.destination);
+        src.onended = () => {
+          if(!isLoopMode) {
+            isPlaying = false;
+            playPauseButton.textContent = "Play";
+            sourceNodes = [];
+          }
+        };
+        sourceNodes.push(src);
+      }
+      if(isLoopMode) {
+        sourceNodes.forEach(src => src.start(0, loopStartTime));
+      } else {
+        sourceNodes.forEach(src => src.start());
+      }
+    }
+
   </script>
 </body>
 </html>
