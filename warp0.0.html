@@ -200,9 +200,9 @@
     let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
     let sourceNodes = []; // BufferSource per la riproduzione
     let selectedRoot = "C4"; // Root fissa: Do centrale
-    let updatingPlayback = false; // per evitare aggiornamenti ripetuti
+    let updatingPlayback = false; // Per evitare aggiornamenti ripetuti
 
-    // Variabile per tenere traccia del flusso corrente (per resettare correttamente)
+    // Variabile per tenere traccia del flusso corrente
     let currentStream = null;
 
     // Per live visualization
@@ -258,7 +258,7 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    let selection = { start: 0, end: canvas.width };
+    let selection = { start: 0, end: canvas.width }; // Intera area
 
     /********** FUNZIONE updateSelectionDiv **********/
     function updateSelectionDiv() {
@@ -347,19 +347,19 @@
         isPlaying = false;
         playPauseButton.textContent = "Play";
       }
-      // Ferma il vecchio stream, se presente, per eliminare il vecchio sample
+      // Ferma il vecchio stream per cancellare il vecchio sample
       if(currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
       }
-      // Reset del vecchio sample
+      // Reset completo: azzera il vecchio campione e tutte le variabili correlate
       audioBuffer = null;
+      audioChunks = [];
       activeChordOffsets = [];
       clearKeyboardActive();
-      // Il root rimane "C4"
+      // Il root resta "C4"
       
       if(!isRecording) {
-        audioChunks = [];
         updateDebug();
         recordedBlob = null;
         playPauseButton.disabled = true;
@@ -372,7 +372,6 @@
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           currentStream = stream;
           startLiveVisualization(stream);
-          // Seleziona il MIME type supportato
           const mimeType = getSupportedMimeType();
           mediaRecorder = new MediaRecorder(stream, { mimeType });
           mediaRecorder.ondataavailable = event => {
@@ -387,7 +386,7 @@
             const reader = new FileReader();
             reader.onload = function() {
               audioCtx.decodeAudioData(reader.result, buffer => {
-                // Applica fade in/out per evitare click ai bordi
+                // Applica fade in/out per evitare click
                 for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
                   let channelData = buffer.getChannelData(channel);
                   applyFade(channelData, buffer.sampleRate, 0.05);
@@ -404,7 +403,7 @@
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
-          // Trigger automatico del playback per mostrare subito il visual
+          // Avvia automaticamente il playback per mostrare subito il visual
           startPlayback();
           isPlaying = true;
           playPauseButton.textContent = "Pausa";
@@ -617,7 +616,7 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Mappe per i tasti
+    // I tasti bianchi e neri si comportano in modo identico: clicca per attivare/disattivare il relativo offset.
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -636,7 +635,7 @@
       { note: 'B', type: 'white' }
     ];
 
-    const numOctaves = 1;
+    const numOctaves = 2;
     const containerWidth = keyboard.clientWidth;
     const totalWhiteKeys = numOctaves * 7;
     const whiteKeyWidth = containerWidth / totalWhiteKeys;
@@ -663,7 +662,7 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // I tasti bianchi si comportano esattamente come i tasti neri: toggle dell'offset
+            // Tasti bianchi: clic per toggle dell'offset (non cambia root)
             const offset = whiteMapping[noteObj.note];
             if(key.classList.contains("active")){
               key.classList.remove("active");
