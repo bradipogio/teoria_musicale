@@ -14,7 +14,7 @@
       padding: 20px;
       margin: 0;
     }
-    /* Bottone record in stile game-button, di default rosso */
+    /* Bottone generico in stile game-button */
     .game-button {
       padding: 10px 20px;
       font-size: 16px;
@@ -28,10 +28,10 @@
     }
     /* Bottone record di default in rosso */
     #recordButton {
-      background: #ff4d4d; /* rosso */
+      background: #ff4d4d;
       color: #fff;
     }
-    /* Quando registra, il bordo lampeggia */
+    /* Durante la registrazione, il bordo lampeggia */
     .recording {
       animation: flash 1s infinite;
     }
@@ -173,7 +173,7 @@
       }
     });
 
-    // --- Funzione per aggiornare il debug dei chunk ---
+    // --- Aggiornamento debug: visualizza il numero di chunk ---
     function updateDebug() {
       debugChunks.textContent = "Audio chunks: " + audioChunks.length;
     }
@@ -186,7 +186,6 @@
         updateDebug();
         audioBuffer = null;
         recordedBlob = null;
-        // Disabilita Play/Loop finché non finisce la registrazione
         playPauseButton.disabled = true;
         loopButton.disabled = true;
         selection = { start: null, end: null };
@@ -194,7 +193,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         try {
-          // Richiedi nuovamente il flusso audio (anche se già attivo)
+          // Passa un timeslice (ad esempio 200ms) per ottenere chunk periodici
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           mediaRecorder = new MediaRecorder(stream);
           mediaRecorder.ondataavailable = event => {
@@ -216,7 +215,7 @@
             };
             reader.readAsArrayBuffer(recordedBlob);
           };
-          mediaRecorder.start();
+          mediaRecorder.start(200); // invia chunk ogni 200ms
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
@@ -234,11 +233,11 @@
       }
     });
 
-    // --- Funzione per disegnare la forma d'onda ---
+    // --- Funzione per disegnare la forma d'onda normalizzata ---
     function drawWaveform() {
       if (!audioBuffer) return;
       const rawData = audioBuffer.getChannelData(0);
-      const samples = canvas.width; // Un campione per pixel
+      const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
       const filteredData = [];
       for (let i = 0; i < samples; i++) {
@@ -248,13 +247,15 @@
         }
         filteredData.push(sum / blockSize);
       }
+      // Trova il massimo per normalizzare
+      const maxVal = Math.max(...filteredData);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#007bff';
       const middle = canvas.height / 2;
       for (let i = 0; i < samples; i++) {
-        const x = i;
-        const y = filteredData[i] * canvas.height;
-        ctx.fillRect(x, middle - y/2, 1, y);
+        let normalized = maxVal > 0 ? filteredData[i] / maxVal : 0;
+        const y = normalized * canvas.height;
+        ctx.fillRect(i, middle - y/2, 1, y);
       }
     }
 
@@ -289,7 +290,6 @@
       selectionDiv.style.display = 'block';
       selectionDiv.style.left = x + 'px';
       selectionDiv.style.width = width + 'px';
-      // Se il loop è attivo e stiamo riproducendo, aggiorna le proprietà in tempo reale
       if (isLoopMode && source && audioBuffer) {
         const loopStartRatio = x / canvas.width;
         const loopEndRatio = (x + width) / canvas.width;
@@ -307,19 +307,16 @@
     });
 
     // --- Play/Pausa ---
-    // Utilizziamo suspend/resume dell'AudioContext per mettere in pausa/riprendere.
     playPauseButton.addEventListener('click', async () => {
       if (!audioBuffer) return;
       if (!isPlaying) {
-        // Riprendi il contesto se sospeso
         if (audioCtx.state === 'suspended') await audioCtx.resume();
-        // Se è il primo play, crea il source
+        // Se il source è nullo o è terminato, crealo
         if (!source) {
           source = audioCtx.createBufferSource();
           source.buffer = audioBuffer;
           source.playbackRate.value = parseFloat(rateSlider.value);
           source.loop = isLoopMode;
-          // Imposta loop se in modalità loop
           if (isLoopMode && audioBuffer) {
             const x = Math.min(selection.start, selection.end);
             const width = Math.abs(selection.end - selection.start);
@@ -329,6 +326,14 @@
             source.loopEnd = loopEndRatio * audioBuffer.duration;
           }
           source.connect(audioCtx.destination);
+          // Se la riproduzione arriva alla fine (quando non c'è loop), resetta il source
+          source.onended = () => {
+            if (!isLoopMode) {
+              isPlaying = false;
+              playPauseButton.textContent = "Play";
+              source = null;
+            }
+          };
           source.start();
         }
         isPlaying = true;
