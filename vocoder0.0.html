@@ -2,17 +2,19 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Live Vocoder con Sicurezza Audio</title>
+  <title>Live Vocoder con Pitch Shift, Modal e Controllo Cuffie</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Includi Tone.js -->
+  <!-- Include Tone.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
+    /* Stili Generali */
     body {
       font-family: 'Roboto', sans-serif;
       background: #f5f5f5;
       text-align: center;
       padding: 20px;
+      margin: 0;
     }
     h1 {
       margin-bottom: 20px;
@@ -35,6 +37,7 @@
       width: 300px;
       margin: 20px;
     }
+    /* Banner di avviso cuffie */
     #warningBanner {
       display: none;
       background: #ff4d4d;
@@ -44,25 +47,86 @@
       width: 80%;
       border-radius: 4px;
     }
+    /* Modal scuro per attivare il microfono */
+    #microphonePrompt {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #microphonePromptContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+    }
   </style>
 </head>
 <body>
-  <h1>Live Vocoder con Sicurezza Audio</h1>
-  <p>Trasforma la tua voce live. Usa le cuffie per proteggere casse e udito.</p>
+  <!-- Modal per attivare il microfono -->
+  <div id="microphonePrompt">
+    <div id="microphonePromptContent">
+      <h2>Attiva Microfono</h2>
+      <p>Questa pagina richiede l'accesso al microfono. Clicca qui per attivarlo.</p>
+      <button id="activateMic" class="game-button">Attiva Microfono</button>
+    </div>
+  </div>
+
+  <!-- Banner di avviso se le cuffie non sono collegate -->
   <div id="warningBanner">ATTENZIONE: Le cuffie non sono collegate!</div>
-  <button id="startButton" class="game-button">Attiva Microfono</button>
+
+  <h1>Live Vocoder con Pitch Shift</h1>
+  <p>Trasforma la tua voce live con il microfono. Usa lo slider per modificare il pitch (in semitoni) senza alterare la durata.</p>
+  <button id="startButton" class="game-button">Avvia Vocoder</button>
   <div>
     <label for="pitchSlider">Pitch Shift: <span id="pitchValue">0</span> semitoni</label><br>
     <input type="range" id="pitchSlider" min="-12" max="12" step="0.1" value="0">
   </div>
+
   <script>
-    // --- Rilevamento cuffie ---
+    // ----- Variabili e setup di Tone.js -----
+    const audioCtx = Tone.context;
+    let mic, pitchShift, compressor;
+    let vocoderStarted = false;
+
+    // Configura il DynamicsCompressor come limiter
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = -20;
+    compressor.knee.value = 30;
+    compressor.ratio.value = 12;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    compressor.toDestination();
+
+    // Crea il nodo PitchShift (0 semitoni = nessuna modifica)
+    pitchShift = new Tone.PitchShift(0);
+    // Collega il nodo PitchShift al compressor
+    pitchShift.connect(compressor);
+
+    // Funzione per impostare il pitch in semitoni
+    function setPitch(semitones) {
+      document.getElementById("pitchValue").textContent = semitones;
+      pitchShift.pitch = semitones;
+    }
+
+    const pitchSlider = document.getElementById("pitchSlider");
+    pitchSlider.addEventListener("input", () => {
+      setPitch(parseFloat(pitchSlider.value));
+    });
+
+    // ----- Controllo cuffie -----
     async function checkHeadphones() {
       if(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const outputs = devices.filter(device => device.kind === "audiooutput");
-          // Prova a trovare un dispositivo il cui label contenga "headphone" o "cuffie"
           const headphonesConnected = outputs.some(device => {
             if(device.label) {
               const lower = device.label.toLowerCase();
@@ -72,76 +136,68 @@
           });
           if(!headphonesConnected) {
             document.getElementById("warningBanner").style.display = "block";
-            await Tone.context.suspend();
+            await audioCtx.suspend();
           } else {
             document.getElementById("warningBanner").style.display = "none";
-            if(Tone.context.state === "suspended") {
-              await Tone.context.resume();
-            }
+            if(audioCtx.state === "suspended") await audioCtx.resume();
           }
         } catch(err) {
-          console.error("Errore durante il controllo delle cuffie:", err);
+          console.error("Errore nel rilevamento delle cuffie:", err);
         }
       }
     }
-    
-    // Aggiungi listener per il devicechange
     if(navigator.mediaDevices) {
       navigator.mediaDevices.addEventListener('devicechange', checkHeadphones);
     }
-    
-    // --- Setup Tone.js e nodi ---
-    const audioCtx = Tone.context;
-    let mic, pitchShift, compressor;
-    
-    // Crea un DynamicsCompressorNode per limitare i picchi (limiter)
-    compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -20;  // soglia in dB
-    compressor.knee.value = 30;
-    compressor.ratio.value = 12;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.25;
-    // Collega il compressor all'uscita
-    compressor.connect(audioCtx.destination);
-    
-    // Crea il nodo PitchShift (inizialmente 0 semitoni, cioè nessuna modifica)
-    pitchShift = new Tone.PitchShift(0);
-    // Collega il PitchShift al compressor
-    pitchShift.connect(compressor);
-    
-    // --- Gestione dello slider ---
-    const pitchSlider = document.getElementById("pitchSlider");
-    const pitchValueDisplay = document.getElementById("pitchValue");
-    pitchSlider.addEventListener("input", () => {
-      const semitones = parseFloat(pitchSlider.value);
-      pitchValueDisplay.textContent = semitones;
-      if(pitchShift) {
-        pitchShift.pitch = semitones;
-      }
-    });
-    
-    // --- Avvio Microfono e Catena Audio ---
-    document.getElementById("startButton").addEventListener("click", async () => {
-      // Riattiva il contesto in risposta ad un'interazione
-      await Tone.start();
-      console.log("Tone.js AudioContext avviato");
-      
-      // Crea il nodo UserMedia per il microfono
-      mic = new Tone.UserMedia();
-      // Collega il microfono al nodo PitchShift
-      mic.connect(pitchShift);
-      
-      // Richiedi l'accesso al microfono
+
+    // ----- Attivazione Microfono -----
+    const activateMicBtn = document.getElementById("activateMic");
+    activateMicBtn.addEventListener("click", async () => {
+      await Tone.start(); // Richiede interazione per avviare l'AudioContext
       try {
+        mic = new Tone.UserMedia();
+        mic.connect(pitchShift);
         await mic.open();
         console.log("Microfono attivato");
-        // Controlla se le cuffie sono collegate
+        document.getElementById("microphonePrompt").style.display = "none";
         checkHeadphones();
       } catch (err) {
         console.error("Errore nell'apertura del microfono:", err);
         alert("Non è possibile accedere al microfono.");
       }
     });
+
+    // ----- Avvio Vocoder -----
+    const startButton = document.getElementById("startButton");
+    startButton.addEventListener("click", async () => {
+      if(!vocoderStarted) {
+        if(audioCtx.state === "suspended") await audioCtx.resume();
+        if(!mic) {
+          alert("Per favore, attiva il microfono cliccando sul pulsante in alto.");
+          return;
+        }
+        vocoderStarted = true;
+        startButton.textContent = "Vocoder Avviato";
+        // Il segnale in ingresso viene già processato in tempo reale:
+        // Tone.UserMedia -> PitchShift -> Compressor -> Destination.
+      }
+    });
+
+    // ----- (Opzionale) Funzione applyFade per evitare click ai bordi del loop -----
+    // Se in futuro registrassi un campione, potresti applicare questo fade:
+    function applyFade(buffer, fadeDuration = 0.05) {
+      const sampleRate = buffer.sampleRate;
+      const fadeSamples = Math.floor(sampleRate * fadeDuration);
+      for(let channel = 0; channel < buffer.numberOfChannels; channel++) {
+        let data = buffer.getChannelData(channel);
+        for(let i = 0; i < fadeSamples; i++){
+          data[i] *= i / fadeSamples;
+        }
+        for(let i = 0; i < fadeSamples; i++){
+          data[data.length - fadeSamples + i] *= (fadeSamples - i) / fadeSamples;
+        }
+      }
+    }
   </script>
 </body>
 </html>
