@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per attivare il microfono -->
+  <!-- Modal per il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -202,12 +202,25 @@
     let selectedRoot = "C4"; // Root fissa: Do centrale
     let updatingPlayback = false; // per evitare aggiornamenti ripetuti
 
-    // Aggiungiamo una variabile per tenere traccia del flusso corrente
+    // Variabile per tenere traccia del flusso corrente (per resettare correttamente)
     let currentStream = null;
 
     // Per live visualization
     let liveAnalyser = null;
     let liveAnimationFrame = null;
+
+    /********** FUNZIONE applyFade **********/
+    function applyFade(channelData, sampleRate, fadeDuration = 0.05) {
+      const fadeSamples = Math.floor(sampleRate * fadeDuration);
+      // Fade in
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[i] *= i / fadeSamples;
+      }
+      // Fade out
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[channelData.length - fadeSamples + i] *= (fadeSamples - i) / fadeSamples;
+      }
+    }
 
     /********** RIFERIMENTI ELEMENTI **********/
     const activateMicBtn = document.getElementById('activateMic');
@@ -281,7 +294,7 @@
       liveAnalyser = audioCtx.createAnalyser();
       liveAnalyser.fftSize = 2048;
       liveSource.connect(liveAnalyser);
-      // Triggera un oscillatore breve per mostrare subito un segnale
+      // Triggera un breve oscillatore per mostrare subito un segnale
       let osc = audioCtx.createOscillator();
       osc.frequency.value = 261.63; // Do centrale
       osc.connect(liveAnalyser);
@@ -312,14 +325,14 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se c'è una registrazione in corso, ferma il playback e resetta tutto
+      // Se c'è un playback in corso, fermalo
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
         isPlaying = false;
         playPauseButton.textContent = "Play";
       }
-      // Assicurati di interrompere il vecchio stream se esiste
+      // Ferma il vecchio stream, se presente, per eliminare il vecchio sample
       if(currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
@@ -328,7 +341,7 @@
       audioBuffer = null;
       activeChordOffsets = [];
       clearKeyboardActive();
-      // Non resettiamo la root: rimane "C4"
+      // Il root rimane "C4"
       
       if(!isRecording) {
         audioChunks = [];
@@ -357,6 +370,11 @@
             const reader = new FileReader();
             reader.onload = function() {
               audioCtx.decodeAudioData(reader.result, buffer => {
+                // Applica il fade in/out per evitare click
+                for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+                  let channelData = buffer.getChannelData(channel);
+                  applyFade(channelData, buffer.sampleRate, 0.05);
+                }
                 audioBuffer = buffer;
                 drawFinalWaveform();
                 playPauseButton.disabled = false;
@@ -409,6 +427,17 @@
         let norm = maxVal > 0 ? filteredData[i] / maxVal : 0;
         let y = norm * canvas.height;
         ctx.fillRect(i, middle - y / 2, 1, y);
+      }
+    }
+
+    /********** FUNZIONE applyFade **********/
+    function applyFade(channelData, sampleRate, fadeDuration = 0.05) {
+      const fadeSamples = Math.floor(sampleRate * fadeDuration);
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[i] *= i / fadeSamples;
+      }
+      for (let i = 0; i < fadeSamples; i++) {
+        channelData[channelData.length - fadeSamples + i] *= (fadeSamples - i) / fadeSamples;
       }
     }
 
@@ -567,7 +596,6 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Mappe per i tasti
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -614,7 +642,7 @@
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
             // I tasti bianchi si comportano come i neri: clic per toggle l'offset
-            const offset = whiteMapping[noteObj.note]; 
+            const offset = whiteMapping[noteObj.note];
             if(key.classList.contains("active")){
               key.classList.remove("active");
               activeChordOffsets = activeChordOffsets.filter(o => o !== offset);
