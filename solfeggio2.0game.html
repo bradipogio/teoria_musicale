@@ -121,12 +121,6 @@
       transition: background 0.3s, transform 0.2s;
     }
     .game-button:hover { transform: scale(1.05); }
-    /* Bottone "Visualizza Classifica" in verde */
-    #view-leaderboard {
-      background: #28a745 !important;
-      color: #fff !important;
-    }
-    #view-leaderboard:hover { background: #218838 !important; }
     /* Timer */
     #timer-container {
       width: 100%;
@@ -181,127 +175,21 @@
     .answer-button:hover { transform: scale(1.05); }
     .flash-correct { background: #28a745 !important; transform: scale(1.1) !important; }
     .flash-wrong { background: #dc3545 !important; transform: scale(1.1) !important; }
-    /* Punteggio e Bonus */
+    /* Punteggio e messaggio finale */
     #scoreboard { font-size: 22px; font-weight: bold; margin: 10px 0; }
-    #bonus-indicator {
-      display: inline-block;
-      padding: 8px 12px;
-      font-size: 16px;
-      border-radius: 4px;
-      background: #ccc;
-      color: #000;
-      margin: 5px;
-      min-width: 130px;
-      transition: background 0.3s;
-    }
-    #bonus-indicator.bonus-active {
-      background-color: red;
-      color: #fff;
-      animation: bonusPulse 0.5s infinite;
-    }
-    @keyframes bonusPulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-    #bonus-indicator.rainbow {
-      animation: rainbowCycle 3s linear infinite, bonusPulse 0.5s infinite;
-      color: #fff;
-    }
-    @keyframes rainbowCycle {
-      0% { background-color: red; }
-      16.67% { background-color: yellow; }
-      33.33% { background-color: blue; }
-      50% { background-color: red; }
-      66.67% { background-color: yellow; }
-      83.33% { background-color: blue; }
-      100% { background-color: red; }
-    }
-    /* Leaderboard */
-    #leaderboard-panel {
-      border: 1px solid #ccc;
-      padding: 10px 15px;
-      border-radius: 8px;
-      max-width: 600px;
-      margin: 10px auto;
-      background: linear-gradient(135deg, #f1f1f1, #e9e9e9);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      display: none;
-      position: relative;
-    }
-    #leaderboard-panel table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    #leaderboard-panel th,
-    #leaderboard-panel td {
-      padding: 6px;
-      border: 1px solid #888;
-      font-size: 14px;
-    }
-    #leaderboard-panel tr:nth-child(even) { background: #e9e9e9; }
-    #leaderboard-panel tr.highlight { background: rgb(255, 217, 0); }
-    #close-leaderboard {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      padding: 6px 10px;
-      font-size: 14px;
-      background: #28a745;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
-    }
-    #close-leaderboard:hover { background: #218838; transform: scale(1.05); }
-    /* Riferimento */
-    #refTop { margin-bottom: 10px; }
-    #refTop img { max-width: 100%; border-radius: 4px; }
-    /* Pannello Admin (opzionale) */
-    #admin-panel {
-      border: 1px solid #aaa;
-      padding: 8px;
-      margin: 10px auto;
-      max-width: 300px;
-      border-radius: 4px;
-      background: #eee;
-      display: none;
-    }
-    #admin-panel h3 { margin-top: 0; font-size: 16px; }
-    #admin-panel table { width: 100%; border-collapse: collapse; }
-    #admin-panel th,
-    #admin-panel td { border: 1px solid #777; padding: 4px; text-align: center; font-size: 13px; }
-    #admin-panel button { margin: 2px; padding: 4px 8px; font-size: 12px; }
-    /* Bottone Admin */
-    #admin-btn {
-      font-size: 12px;
-      padding: 4px 6px;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-    /* Admin Login */
-    #admin-login {
-      display: none;
-      border: 1px solid #777;
-      padding: 8px;
-      margin: 10px auto;
-      max-width: 300px;
-      border-radius: 4px;
-      background: #eee;
-    }
-    #admin-login input[type="password"] {
-      padding: 4px;
-      font-size: 14px;
-      width: 80%;
-      margin-bottom: 5px;
-    }
-    /* Pannello di gioco: riferimento nascosto per default */
+    #result { margin-top: 10px; }
+    /* Riferimento: nel pannello di gioco il riferimento è nascosto per default */
     #game-panel #referenceContainer {
       display: none;
     }
     #game-panel #referenceContainer img {
+      width: 100%;
+      height: auto;
+    }
+    #config-panel #referenceContainer {
+      display: flex;
+    }
+    #config-panel #referenceContainer img {
       width: 100%;
       height: auto;
     }
@@ -316,7 +204,7 @@
   <!-- Pannello di Configurazione -->
   <div id="config-panel" class="container">
     <div id="refTop">
-      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/duratenew.png?raw=true" alt="Riferimento Durate">
+      <img src="https://github.com/bradipogio/teoria_musicale/blob/main/duratenew.png?raw=true" width="100%" alt="Riferimento Durate">
     </div>
     <h2>Impostazioni di Gioco</h2>
     <div class="input-container">
@@ -358,10 +246,9 @@
     <div id="result"></div>
     <button id="endGame" class="game-button">Termina Gioco</button>
   </div>
-
   
-  <script> 
-
+  <script>
+    (function() {
       /* ===============================
          Variabili globali e logica di gioco
          =============================== */
@@ -370,7 +257,6 @@
       const GAME_DURATION = 60000; // 60 secondi
       let timerInterval, gameEndTime;
       let gameDifficulty = "facile";
-      let trialMode = false;
       let currentClef = "treble";
       let currentDuration = "";
       let lastDuration = "";
@@ -497,7 +383,6 @@
       
       function checkDurationAnswer(selectedDuration) {
         if (!gameActive) return;
-        document.querySelectorAll(".answer-button").forEach(b => b.disabled = true);
         const bonusIndicator = document.getElementById("bonus-indicator");
         const { basePoints, bonusFactor } = getScoringParameters();
         if (selectedDuration === currentDuration) {
@@ -519,10 +404,7 @@
             bonusIndicator.textContent = "Bonus";
           }
           animateScore(score);
-          setTimeout(() => {
-            generateRandomDurationNote();
-            document.querySelectorAll(".answer-button").forEach(b => b.disabled = false);
-          }, 1000);
+          generateRandomDurationNote();
         } else {
           let penalty = Math.floor(score / 10);
           score = Math.max(0, score - penalty);
@@ -531,9 +413,6 @@
           bonusIndicator.textContent = "Bonus";
           document.getElementById("result").innerHTML = "<span style='color: red;'>Sbagliato! (-" + penalty + ")</span>";
           animateScore(score);
-          setTimeout(() => {
-            document.querySelectorAll(".answer-button").forEach(b => b.disabled = false);
-          }, 1000);
         }
       }
       
@@ -560,17 +439,14 @@
       
       function endGameDueToTime() {
         gameActive = false;
-        document.getElementById("result").innerHTML = "<span>Tempo scaduto! Punteggio finale: " + score + "</span>";
-        setTimeout(() => { finishGame(); }, 1500);
+        const playerName = document.getElementById("player-name").value.trim() || "giocatore";
+        document.getElementById("result").innerHTML = `<span style="font-size:32px;">Bene ${playerName}, il tuo punteggio è ${score}!</span>`;
+        setTimeout(() => { finishGame(); }, 3000);
       }
       
-      async function finishGame() {
+      function finishGame() {
         document.getElementById("game-panel").style.display = "none";
         document.getElementById("config-panel").style.display = "block";
-        if (!trialMode) {
-          let playerName = document.getElementById("player-name").value.trim() || "giocatore";
-          // Invia il risultato globale per aggiornare il file JSON tramite GitHub Action
-        }
         score = 0;
         consecutiveCorrect = 0;
       }
@@ -579,11 +455,9 @@
          Eventi di configurazione e interazione
          =============================== */
       document.getElementById("startGame").addEventListener("click", function() {
-        trialMode = false;
         gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
         let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
         document.getElementById("player-name").value = playerNameInput;
-        enableAnswerButtons()
         currentClef = "treble";
         score = 0;
         consecutiveCorrect = 0;
@@ -597,29 +471,15 @@
         startGlobalTimer(GAME_DURATION);
       });
       
-      document.getElementById("start-trial").addEventListener("click", function() {
-        trialMode = true;
-        gameDifficulty = document.querySelector('input[name="difficulty"]:checked').value;
-        let playerNameInput = document.getElementById("player-name").value.trim() || "giocatore";
-        document.getElementById("player-name").value = playerNameInput;
-        document.getElementById("scoreboard").textContent = "Punteggio: 0";
-        document.getElementById("result").textContent = "";
-        document.getElementById("bonus-indicator").textContent = "Bonus";
-        document.getElementById("config-panel").style.display = "none";
-        document.getElementById("game-panel").style.display = "block";
-        gameActive = true;
-        generateRandomDurationNote();
-        startGlobalTimer(GAME_DURATION);
-      });
-      
       document.getElementById("endGame").addEventListener("click", function() {
         clearInterval(timerInterval);
         gameActive = false;
-        document.getElementById("result").innerHTML = "<span>Gioco terminato! Punteggio finale: " + score + "</span>";
-        setTimeout(() => { finishGame(); }, 1500);
+        const playerName = document.getElementById("player-name").value.trim() || "giocatore";
+        document.getElementById("result").innerHTML = `<span style="font-size:32px;">Bene ${playerName}, il tuo punteggio è ${score}!</span>`;
+        setTimeout(() => { finishGame(); }, 3000);
       });
       
-      // Toggle riferimento
+      // Toggle riferimento (opzionale)
       const toggleReferenceButton = document.getElementById("toggleReference");
       const referenceContainer = document.getElementById("referenceContainer");
       toggleReferenceButton.addEventListener("click", function() {
@@ -632,10 +492,7 @@
         }
       });
       
-        
-      
-      
-    
+    })();
   </script>
 </body>
 </html>
