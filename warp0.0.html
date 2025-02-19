@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per attivare il microfono -->
+  <!-- Modal Microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -161,7 +161,7 @@
     </div>
   </div>
 
-  <!-- Controlli principali -->
+  <!-- Controlli Principali -->
   <h1>Registrazione, Loop & Piano Pitch-Shift</h1>
   <div>
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
@@ -196,13 +196,11 @@
     let recordedBlob = null;
     let isRecording = false;
     let isPlaying = false;
-    // Loop ON di default
-    let isLoopMode = true;
-    let activeChordOffsets = [];  // offset attivi (in semitoni) per il pitch shift
-    let sourceNodes = [];         // BufferSource per la riproduzione
-    let selectedRoot = null;      // Nota root (es. "C4")
-    // Variabile per evitare aggiornamenti ripetuti del playback
-    let updatingPlayback = false;
+    let isLoopMode = true; // Loop ON di default
+    let activeChordOffsets = []; // offset attivi (in semitoni) per il pitch shift
+    let sourceNodes = []; // BufferSource per la riproduzione
+    let selectedRoot = null; // Nota root (es. "C4")
+    let updatingPlayback = false; // Per evitare aggiornamenti ripetuti
 
     // Per live visualization
     let liveAnalyser = null;
@@ -229,8 +227,27 @@
     let draggingRight = false;
     let draggingSelection = false;
     let dragStartX = null;
-    // Inizialmente l'intera area è selezionata
-    let selection = { start: 0, end: canvas.width };
+    let selection = { start: 0, end: canvas.width }; // Inizialmente tutta l'area
+
+    /********** FUNZIONE updateSelectionDiv **********/
+    function updateSelectionDiv() {
+      const x = Math.min(selection.start, selection.end);
+      const width = Math.abs(selection.end - selection.start);
+      selectionDiv.style.display = "block";
+      selectionDiv.style.left = x + "px";
+      selectionDiv.style.width = width + "px";
+      // Posiziona gli handle (semplice, sempre in fondo)
+      leftHandle.style.left = "0px";
+      rightHandle.style.right = "0px";
+      if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
+        const loopStartRatio = x / canvas.width;
+        const loopEndRatio = (x + width) / canvas.width;
+        sourceNodes.forEach(src => {
+          src.loopStart = loopStartRatio * audioBuffer.duration;
+          src.loopEnd = loopEndRatio * audioBuffer.duration;
+        });
+      }
+    }
 
     /********** PERMESSO MICROFONO **********/
     if(navigator.permissions) {
@@ -285,7 +302,6 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se inizia una nuova registrazione, ferma eventuale riproduzione e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
@@ -303,7 +319,6 @@
         recordedBlob = null;
         playPauseButton.disabled = true;
         loopButton.disabled = true;
-        // Selezione iniziale: tutta l'area
         selection.start = 0;
         selection.end = canvas.width;
         updateSelectionDiv();
@@ -381,7 +396,6 @@
       const clickX = e.clientX - rect.left;
       const selLeft = parseFloat(selectionDiv.style.left) || 0;
       const selWidth = parseFloat(selectionDiv.style.width) || canvas.width;
-      // Se clicco dentro la selezione, sposta tutta
       if(clickX >= selLeft && clickX <= selLeft + selWidth) {
         draggingSelection = true;
         dragStartX = clickX;
