@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Vocoder con Pitch Shift</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Includi Tone.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
+  <style>
+    /* Mantenuto lo stile del precedente HTML */
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f5f5f5;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .game-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background: #ffd700;
+      color: #000;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 5px;
+    }
+    .game-button:hover {
+      background: #e6c200;
+    }
+    #pitchSlider {
+      width: 300px;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Vocoder Voice Changer</h1>
+  <p>Trasforma la tua voce live con il microfono.</p>
+  <button id="startButton" class="game-button">Attiva Microfono</button>
+  <div>
+    <label for="pitchSlider">Pitch Shift: <span id="pitchValue">0</span> semitoni</label><br>
+    <input type="range" id="pitchSlider" min="-12" max="12" step="0.1" value="0">
+  </div>
+  <script>
+    // Inizializza Tone.js
+    let mic, pitchShift;
+    document.getElementById('startButton').addEventListener('click', async () => {
+      // Avvia l'AudioContext
+      await Tone.start();
+      console.log("Audio context avviato");
+
+      // Crea l'oggetto per il microfono
+      mic = new Tone.UserMedia();
+
+      // Crea il nodo PitchShift: il parametro iniziale è 0 semitoni (nessuna modifica)
+      pitchShift = new Tone.PitchShift(0).toDestination();
+
+      // Collega il microfono al nodo di pitch shifting
+      mic.connect(pitchShift);
+
+      // Richiedi l'accesso al microfono
+      try {
+        await mic.open();
+        console.log("Microfono aperto");
+      } catch (err) {
+        console.error("Errore nell'apertura del microfono:", err);
+        alert("Non è possibile accedere al microfono.");
+      }
+    });
+
+    // Slider per regolare il pitch shift
+    const pitchSlider = document.getElementById('pitchSlider');
+    const pitchValueDisplay = document.getElementById('pitchValue');
+    pitchSlider.addEventListener('input', () => {
+      const semitones = parseFloat(pitchSlider.value);
+      pitchValueDisplay.textContent = semitones;
+      if(pitchShift) {
+        pitchShift.pitch = semitones; // Imposta il pitch in semitoni
+      }
+    });
+  </script>
+</body>
+</html>
+
