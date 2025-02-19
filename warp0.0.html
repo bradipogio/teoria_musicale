@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop Dinamico, Play/Pausa & Debug</title>
+  <title>Registrazione, Loop Dinamico, Play/Pausa & Piano</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
       padding: 20px;
       margin: 0;
     }
-    /* Bottone generico in stile game-button */
+    /* Pulsanti in stile game-button */
     .game-button {
       padding: 10px 20px;
       font-size: 16px;
@@ -26,7 +26,7 @@
       transition: background 0.3s, transform 0.2s;
       margin: 10px;
     }
-    /* Bottone record di default in rosso */
+    /* Bottone record in rosso */
     #recordButton {
       background: #ff4d4d;
       color: #fff;
@@ -54,25 +54,26 @@
       position: relative;
       background: #fff;
     }
-    /* Canvas per disegnare la forma d'onda */
+    /* Canvas per la forma d'onda */
     #canvas {
       width: 600px;
       height: 150px;
     }
-    /* Div per visualizzare la selezione */
+    /* Div per la selezione */
     #selection {
       position: absolute;
       top: 0;
       height: 100%;
-      background: rgba(0, 123, 255, 0.3);
+      background: rgba(0,123,255,0.3);
       pointer-events: none;
       display: none;
     }
-    /* Stili per lo slider */
-    input[type="range"] {
+    /* Slider velocità: più grande */
+    #rateSlider {
+      width: 300px;
       margin: 10px;
     }
-    /* Modal per richiesta attivazione microfono */
+    /* Modal per attivazione microfono */
     #microphonePrompt {
       position: fixed;
       top: 0;
@@ -92,11 +93,43 @@
       text-align: center;
       width: 300px;
     }
-    /* Debug: visualizza il conteggio dei chunk */
+    /* Debug: visualizza numero di chunk */
     #debugChunks {
       font-size: 14px;
       margin-top: 10px;
       color: #333;
+    }
+    /* Tastiera piano */
+    #piano {
+      display: inline-block;
+      margin-top: 20px;
+      user-select: none;
+    }
+    .key {
+      display: inline-block;
+      position: relative;
+      border: 1px solid #000;
+      margin: 0;
+      cursor: pointer;
+    }
+    .white {
+      background: #fff;
+      width: 40px;
+      height: 150px;
+      z-index: 1;
+    }
+    .black {
+      background: #000;
+      width: 25px;
+      height: 90px;
+      position: absolute;
+      top: 0;
+      left: 28px;
+      z-index: 2;
+      color: #fff;
+    }
+    .active {
+      outline: 3px solid #ff4d4d;
     }
   </style>
 </head>
@@ -113,7 +146,6 @@
   <!-- Contenuto principale -->
   <h1>Registrazione e Loop Dinamico</h1>
   <div>
-    <!-- Bottone record toggle -->
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
   </div>
   <div>
@@ -130,6 +162,24 @@
     <div id="selection"></div>
   </div>
   <div id="debugChunks">Audio chunks: 0</div>
+  
+  <!-- Piano visuale -->
+  <div id="piano">
+    <!-- Per semplicità, creiamo una sola ottava (da C a B) -->
+    <div class="key white" data-semitone="0">C</div>
+    <div class="key black" data-semitone="1" style="left:30px;">C#</div>
+    <div class="key white" data-semitone="2">D</div>
+    <div class="key black" data-semitone="3" style="left:70px;">D#</div>
+    <div class="key white" data-semitone="4">E</div>
+    <div class="key white" data-semitone="5">F</div>
+    <div class="key black" data-semitone="6" style="left:150px;">F#</div>
+    <div class="key white" data-semitone="7">G</div>
+    <div class="key black" data-semitone="8" style="left:190px;">G#</div>
+    <div class="key white" data-semitone="9">A</div>
+    <div class="key black" data-semitone="10" style="left:230px;">A#</div>
+    <div class="key white" data-semitone="11">B</div>
+  </div>
+  <p>Premi i tasti del piano per impostare il pitch (nota: la modifica avviene al momento del Play)</p>
 
   <script>
     // Variabili globali
@@ -137,12 +187,16 @@
     let audioChunks = [];
     let audioBuffer = null;
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let source = null;  // AudioBufferSourceNode in riproduzione
+    let source = null;  // AudioBufferSourceNode (o array di source se accordo)
     let recordedBlob = null;
     let selection = { start: null, end: null };
-    let isRecording = false;  // Stato registrazione
-    let isPlaying = false;    // Stato play/pause
-    let isLoopMode = false;   // Stato loop
+    let isRecording = false;
+    let isPlaying = false;
+    let isLoopMode = false;
+    let liveAnimationId; // per cancellare l'animazione live
+
+    // Array dei pitch attivi (in semitoni, 0 significa nessun shift)
+    let activePitches = [];
 
     // Riferimenti agli elementi
     const activateMicBtn = document.getElementById('activateMic');
@@ -156,9 +210,11 @@
     const ctx = canvas.getContext('2d');
     const selectionDiv = document.getElementById('selection');
     const debugChunks = document.getElementById('debugChunks');
+    const pianoKeys = document.querySelectorAll('#piano .key');
 
     let isDragging = false;
     let dragStartX = null;
+    let analyser; // per visualizzazione live
 
     // --- Modal per attivare il microfono ---
     activateMicBtn.addEventListener('click', async () => {
@@ -173,9 +229,44 @@
       }
     });
 
-    // --- Aggiornamento debug: visualizza il numero di chunk ---
+    // --- Aggiornamento debug: visualizza numero di chunk ---
     function updateDebug() {
       debugChunks.textContent = "Audio chunks: " + audioChunks.length;
+    }
+
+    // --- Visualizzazione live con Analyser ---
+    function startLiveDrawing(stream) {
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      const bufferLength = analyser.fftSize;
+      const dataArray = new Uint8Array(bufferLength);
+      const liveCtx = ctx;
+      
+      const draw = () => {
+        liveAnimationId = requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
+        liveCtx.clearRect(0, 0, canvas.width, canvas.height);
+        liveCtx.fillStyle = '#f5f5f5';
+        liveCtx.fillRect(0, 0, canvas.width, canvas.height);
+        liveCtx.lineWidth = 2;
+        liveCtx.strokeStyle = '#007bff';
+        liveCtx.beginPath();
+        let sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+        for(let i = 0; i < bufferLength; i++){
+          let v = dataArray[i] / 128.0;
+          let y = v * canvas.height/2;
+          if(i === 0) {
+            liveCtx.moveTo(x, y);
+          } else {
+            liveCtx.lineTo(x, y);
+          }
+          x += sliceWidth;
+        }
+        liveCtx.lineTo(canvas.width, canvas.height/2);
+        liveCtx.stroke();
+      }
+      draw();
     }
 
     // --- Registrazione toggle (Record/Stop) ---
@@ -193,8 +284,9 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         try {
-          // Passa un timeslice (ad esempio 200ms) per ottenere chunk periodici
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Avvia il disegno live
+          startLiveDrawing(stream);
           mediaRecorder = new MediaRecorder(stream);
           mediaRecorder.ondataavailable = event => {
             if (event.data.size > 0) {
@@ -203,6 +295,7 @@
             }
           };
           mediaRecorder.onstop = () => {
+            cancelAnimationFrame(liveAnimationId);
             recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const reader = new FileReader();
             reader.onload = function() {
@@ -215,7 +308,8 @@
             };
             reader.readAsArrayBuffer(recordedBlob);
           };
-          mediaRecorder.start(200); // invia chunk ogni 200ms
+          // Otteniamo chunk ogni 200ms
+          mediaRecorder.start(200);
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
@@ -233,7 +327,7 @@
       }
     });
 
-    // --- Funzione per disegnare la forma d'onda normalizzata ---
+    // --- Funzione per disegnare la forma d'onda normalizzata (fine registrazione) ---
     function drawWaveform() {
       if (!audioBuffer) return;
       const rawData = audioBuffer.getChannelData(0);
@@ -247,7 +341,6 @@
         }
         filteredData.push(sum / blockSize);
       }
-      // Trova il massimo per normalizzare
       const maxVal = Math.max(...filteredData);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#007bff';
@@ -282,8 +375,6 @@
       }
       updateSelectionDiv();
     });
-
-    // Aggiorna il div della selezione e, se il loop è attivo, aggiorna loopStart/loopEnd
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
@@ -306,35 +397,75 @@
       }
     });
 
-    // --- Play/Pausa ---
+    // --- Piano visivo: gestione dei tasti ---
+    pianoKeys.forEach(key => {
+      key.addEventListener('click', () => {
+        key.classList.toggle('active');
+        const semitone = parseInt(key.getAttribute('data-semitone'));
+        // Se il tasto è attivo, aggiungilo all'array; se non è attivo, rimuovilo
+        if (key.classList.contains('active')) {
+          if (!activePitches.includes(semitone)) activePitches.push(semitone);
+        } else {
+          activePitches = activePitches.filter(n => n !== semitone);
+        }
+        console.log("Pitch attivi:", activePitches);
+      });
+    });
+
+    // --- Play/Pausa e pitch shifting ---
     playPauseButton.addEventListener('click', async () => {
       if (!audioBuffer) return;
       if (!isPlaying) {
         if (audioCtx.state === 'suspended') await audioCtx.resume();
-        // Se il source è nullo o è terminato, crealo
-        if (!source) {
-          source = audioCtx.createBufferSource();
-          source.buffer = audioBuffer;
-          source.playbackRate.value = parseFloat(rateSlider.value);
-          source.loop = isLoopMode;
-          if (isLoopMode && audioBuffer) {
-            const x = Math.min(selection.start, selection.end);
-            const width = Math.abs(selection.end - selection.start);
-            const loopStartRatio = x / canvas.width;
-            const loopEndRatio = (x + width) / canvas.width;
-            source.loopStart = loopStartRatio * audioBuffer.duration;
-            source.loopEnd = loopEndRatio * audioBuffer.duration;
-          }
-          source.connect(audioCtx.destination);
-          // Se la riproduzione arriva alla fine (quando non c'è loop), resetta il source
-          source.onended = () => {
-            if (!isLoopMode) {
-              isPlaying = false;
-              playPauseButton.textContent = "Play";
-              source = null;
+        // Se non ci sono pitch attivi, riproduci normalmente
+        if (activePitches.length === 0) {
+          if (!source) {
+            source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.playbackRate.value = parseFloat(rateSlider.value);
+            source.loop = isLoopMode;
+            if (isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+              const x = Math.min(selection.start, selection.end);
+              const width = Math.abs(selection.end - selection.start);
+              const loopStartRatio = x / canvas.width;
+              const loopEndRatio = (x + width) / canvas.width;
+              source.loopStart = loopStartRatio * audioBuffer.duration;
+              source.loopEnd = loopEndRatio * audioBuffer.duration;
             }
-          };
-          source.start();
+            source.connect(audioCtx.destination);
+            source.onended = () => {
+              if (!isLoopMode) {
+                isPlaying = false;
+                playPauseButton.textContent = "Play";
+                source = null;
+              }
+            };
+            source.start();
+          }
+        } else {
+          // Se ci sono pitch attivi, crea un accordo:
+          // Ferma eventuali source esistenti
+          if (source) { try { source.stop(); } catch(e) {} }
+          // Crea una lista di source per ciascuna nota attiva
+          activePitches.forEach(semitone => {
+            const src = audioCtx.createBufferSource();
+            src.buffer = audioBuffer;
+            // Calcola il factor: 2^(n/12)
+            src.playbackRate.value = parseFloat(rateSlider.value) * Math.pow(2, semitone/12);
+            src.loop = isLoopMode;
+            if (isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
+              const x = Math.min(selection.start, selection.end);
+              const width = Math.abs(selection.end - selection.start);
+              const loopStartRatio = x / canvas.width;
+              const loopEndRatio = (x + width) / canvas.width;
+              src.loopStart = loopStartRatio * audioBuffer.duration;
+              src.loopEnd = loopEndRatio * audioBuffer.duration;
+            }
+            src.connect(audioCtx.destination);
+            src.start();
+          });
+          // Salviamo in 'source' (anche se si tratta di un mix)
+          source = null;
         }
         isPlaying = true;
         playPauseButton.textContent = "Pausa";
@@ -350,7 +481,7 @@
       isLoopMode = !isLoopMode;
       if (source) {
         source.loop = isLoopMode;
-        if (isLoopMode && audioBuffer) {
+        if (isLoopMode && audioBuffer && selection.start !== null && selection.end !== null) {
           const x = Math.min(selection.start, selection.end);
           const width = Math.abs(selection.end - selection.start);
           const loopStartRatio = x / canvas.width;
