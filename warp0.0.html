@@ -152,7 +152,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal per il microfono -->
+  <!-- Modal per attivare il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -201,6 +201,9 @@
     let sourceNodes = []; // BufferSource per la riproduzione
     let selectedRoot = "C4"; // Root fissa: Do centrale
     let updatingPlayback = false; // per evitare aggiornamenti ripetuti
+
+    // Aggiungiamo una variabile per tenere traccia del flusso corrente
+    let currentStream = null;
 
     // Per live visualization
     let liveAnalyser = null;
@@ -261,6 +264,7 @@
     activateMicBtn.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentStream = stream;
         await audioCtx.resume();
         console.log("Microfono attivato:", stream);
         microphonePrompt.style.display = "none";
@@ -308,18 +312,23 @@
 
     /********** REGISTRAZIONE (RESET COMPLETO) **********/
     recordButton.addEventListener('click', async () => {
-      // Se una nuova registrazione parte, ferma eventuale playback e resetta tutto
+      // Se c'è una registrazione in corso, ferma il playback e resetta tutto
       if(isPlaying) {
         sourceNodes.forEach(src => { try { src.stop(); } catch(e) {} });
         sourceNodes = [];
         isPlaying = false;
         playPauseButton.textContent = "Play";
       }
-      // Reset del vecchio sample:
+      // Assicurati di interrompere il vecchio stream se esiste
+      if(currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+      }
+      // Resetta il vecchio sample
       audioBuffer = null;
       activeChordOffsets = [];
       clearKeyboardActive();
-      // Non resettare il root: rimane "C4"
+      // Non resettiamo la root: rimane "C4"
       
       if(!isRecording) {
         audioChunks = [];
@@ -333,6 +342,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          currentStream = stream;
           startLiveVisualization(stream);
           mediaRecorder = new MediaRecorder(stream);
           mediaRecorder.ondataavailable = event => {
@@ -557,7 +567,7 @@
     }
 
     /********** GESTIONE TASTIERA **********/
-    // Le mappe per i tasti
+    // Mappe per i tasti
     const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
     const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
 
@@ -603,7 +613,7 @@
           keyboard.appendChild(key);
           whiteKeyCount++;
           key.addEventListener("click", (e) => {
-            // Qui i tasti bianchi si comportano come i neri: clic per toggle l'offset relativo
+            // I tasti bianchi si comportano come i neri: clic per toggle l'offset
             const offset = whiteMapping[noteObj.note]; 
             if(key.classList.contains("active")){
               key.classList.remove("active");
