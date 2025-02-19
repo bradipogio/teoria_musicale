@@ -7,7 +7,7 @@
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
-    /* STILI GENERALI */
+    /* Stili generali */
     body {
       font-family: 'Roboto', sans-serif;
       background: #f5f5f5;
@@ -26,7 +26,7 @@
       transition: background 0.3s, transform 0.2s;
       margin: 10px;
     }
-    /* Bottone Record: rosso con bordo lampeggiante durante la registrazione */
+    /* Bottone record (rosso) */
     #recordButton {
       background: #ff4d4d;
       color: #fff;
@@ -39,7 +39,7 @@
       50% { border-color: #000; }
       100% { border-color: #fff; }
     }
-    /* Bottone Play/Pausa (verde) e Loop */
+    /* Bottone play/pausa (verde) */
     #playPauseButton {
       background: #28a745;
       color: #fff;
@@ -48,7 +48,7 @@
       background: #ffd700;
       color: #000;
     }
-    /* Slider di velocità grande */
+    /* Slider della velocità */
     input[type="range"] {
       width: 500px;
       margin: 10px;
@@ -62,12 +62,10 @@
       position: relative;
       background: #fff;
     }
-    /* Canvas per il waveform */
     #canvas {
       width: 600px;
       height: 150px;
     }
-    /* Div per la selezione (loop) */
     #selection {
       position: absolute;
       top: 0;
@@ -76,13 +74,12 @@
       pointer-events: none;
       display: none;
     }
-    /* Debug */
     #debugChunks {
       font-size: 14px;
       margin-top: 10px;
       color: #333;
     }
-    /* Modal per attivare il microfono */
+    /* Modal microfono */
     #microphonePrompt {
       position: fixed;
       top: 0;
@@ -102,7 +99,7 @@
       text-align: center;
       width: 300px;
     }
-    /* Tastiera – stile preso dal tuo esempio */
+    /* Tastiera – ispirata al tuo esempio */
     #keyboard {
       position: relative;
       width: 90%;
@@ -144,7 +141,7 @@
   </style>
 </head>
 <body>
-  <!-- Modal di attivazione microfono -->
+  <!-- Modal per attivare il microfono -->
   <div id="microphonePrompt">
     <div id="microphonePromptContent">
       <h2>Attivazione Microfono</h2>
@@ -173,11 +170,11 @@
   </div>
   <div id="debugChunks">Audio chunks: 0</div>
 
-  <!-- Tastiera – generata in 2 ottave -->
+  <!-- Tastiera: generata in 2 ottave -->
   <div id="keyboard"></div>
 
   <script>
-    /************ VARIABILI GLOBALI ************/
+    /********** VARIABILI GLOBALI **********/
     let mediaRecorder;
     let audioChunks = [];
     let audioBuffer = null;
@@ -186,14 +183,14 @@
     let isRecording = false;
     let isPlaying = false;
     let isLoopMode = false;
-    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi per il pitch shift
-    let sourceNodes = [];         // array dei source per la riproduzione (per accordi)
-    
+    let activeChordOffsets = [];  // array degli offset (in semitoni) attivi
+    let sourceNodes = [];         // array dei BufferSource per la riproduzione
+
     // Per live visualization
     let liveAnalyser = null;
     let liveAnimationFrame = null;
-    
-    /************ RIFERIMENTI ELEMENTI ************/
+
+    /********** RIFERIMENTI ELEMENTI **********/
     const activateMicBtn = document.getElementById('activateMic');
     const microphonePrompt = document.getElementById('microphonePrompt');
     const recordButton = document.getElementById('recordButton');
@@ -206,12 +203,12 @@
     const selectionDiv = document.getElementById('selection');
     const debugChunks = document.getElementById('debugChunks');
     const keyboard = document.getElementById('keyboard');
-    
+
     let isDragging = false;
     let dragStartX = null;
     let selection = { start: null, end: null };
 
-    /************ PERMESSO MICROFONO ************/
+    /********** PERMESSO MICROFONO **********/
     if(navigator.permissions) {
       navigator.permissions.query({ name: "microphone" }).then(result => {
         if(result.state === "granted") {
@@ -232,7 +229,7 @@
       }
     });
 
-    /************ LIVE WAVEFORM ************/
+    /********** LIVE WAVEFORM **********/
     function startLiveVisualization(stream) {
       const liveSource = audioCtx.createMediaStreamSource(stream);
       liveAnalyser = audioCtx.createAnalyser();
@@ -245,16 +242,26 @@
       const bufferLength = liveAnalyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       liveAnalyser.getByteTimeDomainData(dataArray);
-      // Disegna un'area piena per rendere il waveform più visibile
+      // Amplifica l'ampiezza: sottrai 128 e moltiplica per 2
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#007bff";
+      ctx.beginPath();
       const sliceWidth = canvas.width / bufferLength;
-      ctx.fillStyle = "#007bff";
-      for (let i = 0; i < bufferLength; i++) {
-        let v = dataArray[i] / 255;
-        let y = v * canvas.height;
-        ctx.fillRect(i * sliceWidth, y, sliceWidth, canvas.height - y);
+      let x = 0;
+      for(let i = 0; i < bufferLength; i++){
+        let v = (dataArray[i] - 128) * 2; // variazioni in range [-256,256]
+        let y = canvas.height/2 - (v * (canvas.height/256));
+        if(i===0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        x += sliceWidth;
       }
+      ctx.lineTo(canvas.width, canvas.height/2);
+      ctx.stroke();
       liveAnimationFrame = requestAnimationFrame(drawLiveWaveform);
     }
     function stopLiveVisualization() {
@@ -262,10 +269,10 @@
       liveAnalyser = null;
     }
 
-    /************ REGISTRAZIONE ************/
+    /********** REGISTRAZIONE **********/
     recordButton.addEventListener('click', async () => {
       if(!isRecording) {
-        // Avvia la registrazione
+        // Avvia registrazione
         audioChunks = [];
         updateDebug();
         audioBuffer = null;
@@ -299,7 +306,7 @@
             };
             reader.readAsArrayBuffer(recordedBlob);
           };
-          mediaRecorder.start(200); // invia chunk ogni 200 ms
+          mediaRecorder.start(200);
           isRecording = true;
           recordButton.textContent = "Ferma Registrazione";
           recordButton.classList.add("recording");
@@ -325,25 +332,25 @@
       const samples = canvas.width;
       const blockSize = Math.floor(rawData.length / samples);
       let filteredData = [];
-      for(let i = 0; i < samples; i++){
+      for(let i=0; i < samples; i++){
         let sum = 0;
-        for(let j = 0; j < blockSize; j++){
-          sum += Math.abs(rawData[i * blockSize + j]);
+        for(let j=0; j < blockSize; j++){
+          sum += Math.abs(rawData[i*blockSize+j]);
         }
-        filteredData.push(sum / blockSize);
+        filteredData.push(sum/blockSize);
       }
       const maxVal = Math.max(...filteredData);
       ctx.clearRect(0,0,canvas.width, canvas.height);
       ctx.fillStyle = "#007bff";
       const middle = canvas.height/2;
-      for(let i = 0; i < samples; i++){
-        let norm = maxVal > 0 ? filteredData[i]/maxVal : 0;
+      for(let i=0; i < samples; i++){
+        let norm = maxVal>0 ? filteredData[i]/maxVal : 0;
         let y = norm * canvas.height;
         ctx.fillRect(i, middle - y/2, 1, y);
       }
     }
 
-    /************ SELEZIONE LOOP ************/
+    /********** SELEZIONE LOOP **********/
     canvas.addEventListener('mousedown', (e) => {
       isDragging = true;
       const rect = canvas.getBoundingClientRect();
@@ -361,7 +368,7 @@
     });
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
-      if(selection.start > selection.end){
+      if(selection.start > selection.end) {
         [selection.start, selection.end] = [selection.end, selection.start];
       }
       updateSelectionDiv();
@@ -374,7 +381,7 @@
       selectionDiv.style.width = width + "px";
       if(isLoopMode && sourceNodes.length > 0 && audioBuffer) {
         const loopStartRatio = x / canvas.width;
-        const loopEndRatio = (x + width) / canvas.width;
+        const loopEndRatio = (x+width) / canvas.width;
         sourceNodes.forEach(src => {
           src.loopStart = loopStartRatio * audioBuffer.duration;
           src.loopEnd = loopEndRatio * audioBuffer.duration;
@@ -382,7 +389,7 @@
       }
     }
 
-    /************ PLAY/PAUSA E LOOP ************/
+    /********** PLAY/PAUSA E LOOP **********/
     rateSlider.addEventListener('input', () => {
       rateValue.textContent = rateSlider.value;
       if(sourceNodes.length > 0) {
@@ -411,12 +418,12 @@
       }
       loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
     });
-    // Avvia la riproduzione: se sono attivi tasti per pitch shift crea tanti source node
+    // Funzione per avviare la riproduzione (con pitch shift se attivo)
     function startPlayback() {
       sourceNodes = [];
       const numVoices = activeChordOffsets.length > 0 ? activeChordOffsets.length : 1;
       const voiceGain = 1 / numVoices;
-      for(let i = 0; i < numVoices; i++){
+      for(let i=0; i<numVoices; i++){
         let src = audioCtx.createBufferSource();
         src.buffer = audioBuffer;
         src.playbackRate.value = parseFloat(rateSlider.value);
@@ -429,7 +436,7 @@
           const x = Math.min(selection.start, selection.end);
           const width = Math.abs(selection.end - selection.start);
           const loopStartRatio = x / canvas.width;
-          const loopEndRatio = (x + width) / canvas.width;
+          const loopEndRatio = (x+width) / canvas.width;
           src.loopStart = loopStartRatio * audioBuffer.duration;
           src.loopEnd = loopEndRatio * audioBuffer.duration;
         }
@@ -448,40 +455,31 @@
       sourceNodes.forEach(src => src.start());
     }
 
-    /************ GENERAZIONE DELLA TASTIERA ************/
-    // Utilizza la struttura e lo stile della tastiera che ci hai fornito
-    const octaveNotes = [
-      { note: 'C', type: 'white' },
-      { note: 'C#', type: 'black' },
-      { note: 'D', type: 'white' },
-      { note: 'D#', type: 'black' },
-      { note: 'E', type: 'white' },
-      { note: 'F', type: 'white' },
-      { note: 'F#', type: 'black' },
-      { note: 'G', type: 'white' },
-      { note: 'G#', type: 'black' },
-      { note: 'A', type: 'white' },
-      { note: 'A#', type: 'black' },
-      { note: 'B', type: 'white' }
-    ];
+    /********** GESTIONE TASTIERA **********/
+    // Mappa per i tasti (con offset in semitoni)
+    const whiteMapping = { "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11 };
+    const blackMapping = { "C#": 1, "D#": 3, "F#": 6, "G#": 8, "A#": 10 };
+
+    // Genera tastiera in 2 ottave
     const numOctaves = 2;
-    // Calcola larghezza tasti bianchi
     const containerWidth = keyboard.clientWidth;
     const totalWhiteKeys = numOctaves * 7;
     const whiteKeyWidth = containerWidth / totalWhiteKeys;
     const whiteKeyHeight = keyboard.clientHeight;
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = whiteKeyHeight * 0.6;
-    // Genera i tasti
     let whiteKeyCount = 0;
+    // Genera tasti
     for(let o = 0; o < numOctaves; o++){
-      for(let i = 0; i < octaveNotes.length; i++){
+      for(let i = 0; i < 12; i++){
         let noteObj = octaveNotes[i];
         let fullNote = noteObj.note + (4 + o);
         if(noteObj.type === "white"){
           let key = document.createElement("div");
           key.classList.add("white-key");
           key.dataset.note = fullNote;
+          // Imposta data-offset in base alla mappa
+          key.setAttribute("data-offset", whiteMapping[noteObj.note]);
           key.style.width = whiteKeyWidth + "px";
           key.style.height = whiteKeyHeight + "px";
           key.style.left = (whiteKeyCount * whiteKeyWidth) + "px";
@@ -491,20 +489,23 @@
           key.appendChild(label);
           keyboard.appendChild(key);
           whiteKeyCount++;
-          // Clic semplice imposta il root (senza pitch shift)
-          key.addEventListener("click", () => {
+          // Click senza SHIFT: imposta il root (rimuove ogni pitch shift)
+          key.addEventListener("click", (e) => {
+            if(e.shiftKey) return; // gestito solo nel listener SHIFT
             clearKeyboardActive();
             key.classList.add("active");
-            // Per il root non applichiamo pitch shift
-            // (activeChordOffsets non viene modificato in questo caso)
+            activeChordOffsets = []; // rimuovi pitch shift
+            // Se in riproduzione, aggiorna il playback con le nuove impostazioni
+            if(isPlaying) {
+              stopPlaybackAndRestart();
+            }
           });
-          // Assegna data-offset 0 di default
-          key.setAttribute("data-offset", "0");
         } else {
           let key = document.createElement("div");
           key.classList.add("black-key");
           key.dataset.note = fullNote;
-          // Posiziona il tasto nero in base al tasto bianco precedente
+          key.setAttribute("data-offset", blackMapping[noteObj.note]);
+          // Posiziona il tasto nero: usa il conteggio dei bianchi precedenti
           let baseLeft = ((whiteKeyCount - 1) * whiteKeyWidth) + whiteKeyWidth - (blackKeyWidth/2);
           key.style.width = blackKeyWidth + "px";
           key.style.height = blackKeyHeight + "px";
@@ -512,7 +513,7 @@
           keyboard.appendChild(key);
           key.addEventListener("click", (e) => {
             e.stopPropagation();
-            // Toggle: cliccando con SHIFT (o sui neri) si attiva/disattiva il pitch shift
+            // Toggle pitch shift: se SHIFT (o per i tasti neri, sempre) attiva/disattiva
             if(key.classList.contains("active")){
               key.classList.remove("active");
               const offset = parseInt(key.getAttribute("data-offset"));
@@ -523,14 +524,24 @@
               activeChordOffsets.push(offset);
             }
             console.log("Active chord offsets:", activeChordOffsets);
+            if(isPlaying) {
+              stopPlaybackAndRestart();
+            }
           });
-          key.setAttribute("data-offset", "0");
         }
       }
     }
     function clearKeyboardActive() {
       const keys = keyboard.querySelectorAll(".white-key, .black-key");
       keys.forEach(k => k.classList.remove("active"));
+    }
+    // Funzione per fermare e riavviare la riproduzione (per aggiornare il pitch shift)
+    function stopPlaybackAndRestart() {
+      sourceNodes.forEach(src => {
+        try { src.stop(); } catch(e){ }
+      });
+      sourceNodes = [];
+      if(isPlaying) startPlayback();
     }
   </script>
 </body>
