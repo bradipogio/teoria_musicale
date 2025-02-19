@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Registrazione, Loop Dinamico e Play/Pausa</title>
+  <title>Registrazione, Loop Dinamico, Play/Pausa & Debug</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Google Fonts: Roboto -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
@@ -14,11 +14,11 @@
       padding: 20px;
       margin: 0;
     }
-    /* Pulsanti in stile game-button */
+    /* Bottone record in stile game-button, di default rosso */
     .game-button {
       padding: 10px 20px;
       font-size: 16px;
-      border: none;
+      border: 2px solid transparent;
       border-radius: 4px;
       background: #ffd700;
       color: #000;
@@ -26,8 +26,24 @@
       transition: background 0.3s, transform 0.2s;
       margin: 10px;
     }
-    .game-button:hover { 
-      transform: scale(1.05); 
+    /* Bottone record di default in rosso */
+    #recordButton {
+      background: #ff4d4d; /* rosso */
+      color: #fff;
+    }
+    /* Quando registra, il bordo lampeggia */
+    .recording {
+      animation: flash 1s infinite;
+    }
+    @keyframes flash {
+      0% { border-color: #fff; }
+      50% { border-color: #000; }
+      100% { border-color: #fff; }
+    }
+    /* Bottone play/pausa verde */
+    #playPauseButton {
+      background: #28a745;
+      color: #fff;
     }
     /* Contenitore per la waveform */
     #waveform {
@@ -52,7 +68,7 @@
       pointer-events: none;
       display: none;
     }
-    /* Stile per lo slider */
+    /* Stili per lo slider */
     input[type="range"] {
       margin: 10px;
     }
@@ -76,6 +92,12 @@
       text-align: center;
       width: 300px;
     }
+    /* Debug: visualizza il conteggio dei chunk */
+    #debugChunks {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -91,9 +113,8 @@
   <!-- Contenuto principale -->
   <h1>Registrazione e Loop Dinamico</h1>
   <div>
-    <!-- I pulsanti saranno abilitati dopo l'attivazione del microfono -->
+    <!-- Bottone record toggle -->
     <button id="recordButton" class="game-button" disabled>Inizia Registrazione</button>
-    <button id="stopButton" class="game-button" disabled>Ferma Registrazione</button>
   </div>
   <div>
     <button id="playPauseButton" class="game-button" disabled>Play</button>
@@ -101,13 +122,14 @@
   </div>
   <div>
     <label for="rateSlider">Velocità di Riproduzione:</label>
-    <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+    <input type="range" id="rateSlider" min="0.3" max="10" step="0.1" value="1">
     <span id="rateValue">1</span>x
   </div>
   <div id="waveform">
     <canvas id="canvas" width="600" height="150"></canvas>
     <div id="selection"></div>
   </div>
+  <div id="debugChunks">Audio chunks: 0</div>
 
   <script>
     // Variabili globali
@@ -115,18 +137,17 @@
     let audioChunks = [];
     let audioBuffer = null;
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let source = null;  // L'AudioBufferSourceNode in riproduzione
+    let source = null;  // AudioBufferSourceNode in riproduzione
     let recordedBlob = null;
     let selection = { start: null, end: null };
-
-    let isPlaying = false;   // Stato play/pause
-    let isLoopMode = false;  // Stato loop
+    let isRecording = false;  // Stato registrazione
+    let isPlaying = false;    // Stato play/pause
+    let isLoopMode = false;   // Stato loop
 
     // Riferimenti agli elementi
     const activateMicBtn = document.getElementById('activateMic');
     const microphonePrompt = document.getElementById('microphonePrompt');
     const recordButton = document.getElementById('recordButton');
-    const stopButton = document.getElementById('stopButton');
     const playPauseButton = document.getElementById('playPauseButton');
     const loopButton = document.getElementById('loopButton');
     const rateSlider = document.getElementById('rateSlider');
@@ -134,6 +155,7 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const selectionDiv = document.getElementById('selection');
+    const debugChunks = document.getElementById('debugChunks');
 
     let isDragging = false;
     let dragStartX = null;
@@ -143,64 +165,72 @@
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log("Microfono attivato:", stream);
-        // Nascondi il modal e abilita i pulsanti di registrazione e riproduzione
         microphonePrompt.style.display = 'none';
         recordButton.disabled = false;
-        // (Se necessario, puoi salvare lo stream per altre operazioni)
       } catch (err) {
         console.error("Accesso al microfono negato:", err);
         alert("Accesso al microfono non consentito. Clicca su 'Consenti' quando richiesto.");
       }
     });
 
-    // --- Registrazione ---
+    // --- Funzione per aggiornare il debug dei chunk ---
+    function updateDebug() {
+      debugChunks.textContent = "Audio chunks: " + audioChunks.length;
+    }
+
+    // --- Registrazione toggle (Record/Stop) ---
     recordButton.addEventListener('click', async () => {
-      // Reset dati precedenti
-      audioChunks = [];
-      audioBuffer = null;
-      recordedBlob = null;
-      playPauseButton.disabled = true;
-      loopButton.disabled = true;
-      selection = { start: null, end: null };
-      selectionDiv.style.display = 'none';
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      try {
-        // Richiedi il flusso audio (può essere richiesto nuovamente)
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = event => {
-          if (event.data.size > 0) {
-            audioChunks.push(event.data);
-          }
-        };
-        mediaRecorder.onstop = () => {
-          recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const reader = new FileReader();
-          reader.onload = function() {
-            audioCtx.decodeAudioData(reader.result, buffer => {
-              audioBuffer = buffer;
-              drawWaveform();
-              playPauseButton.disabled = false;
-              loopButton.disabled = false;
-            });
+      if (!isRecording) {
+        // Avvia la registrazione
+        audioChunks = [];
+        updateDebug();
+        audioBuffer = null;
+        recordedBlob = null;
+        // Disabilita Play/Loop finché non finisce la registrazione
+        playPauseButton.disabled = true;
+        loopButton.disabled = true;
+        selection = { start: null, end: null };
+        selectionDiv.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        try {
+          // Richiedi nuovamente il flusso audio (anche se già attivo)
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+              audioChunks.push(event.data);
+              updateDebug();
+            }
           };
-          reader.readAsArrayBuffer(recordedBlob);
-        };
-        mediaRecorder.start();
-        recordButton.disabled = true;
-        stopButton.disabled = false;
-      } catch (err) {
-        console.error("Errore durante la registrazione:", err);
-      }
-    });
-
-    // Ferma la registrazione
-    stopButton.addEventListener('click', () => {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        recordButton.disabled = false;
-        stopButton.disabled = true;
+          mediaRecorder.onstop = () => {
+            recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = function() {
+              audioCtx.decodeAudioData(reader.result, buffer => {
+                audioBuffer = buffer;
+                drawWaveform();
+                playPauseButton.disabled = false;
+                loopButton.disabled = false;
+              });
+            };
+            reader.readAsArrayBuffer(recordedBlob);
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          recordButton.textContent = "Ferma Registrazione";
+          recordButton.classList.add("recording");
+        } catch (err) {
+          console.error("Errore durante la registrazione:", err);
+        }
+      } else {
+        // Ferma la registrazione
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+        isRecording = false;
+        recordButton.textContent = "Inizia Registrazione";
+        recordButton.classList.remove("recording");
       }
     });
 
@@ -237,7 +267,6 @@
       selection.end = dragStartX;
       updateSelectionDiv();
     });
-
     canvas.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       const rect = canvas.getBoundingClientRect();
@@ -245,7 +274,6 @@
       selection.end = currentX;
       updateSelectionDiv();
     });
-
     canvas.addEventListener('mouseup', () => {
       isDragging = false;
       if (selection.start > selection.end) {
@@ -254,13 +282,14 @@
       updateSelectionDiv();
     });
 
-    // Aggiorna il div che mostra la selezione e, se il loop è attivo, aggiorna loopStart/loopEnd
+    // Aggiorna il div della selezione e, se il loop è attivo, aggiorna loopStart/loopEnd
     function updateSelectionDiv() {
       const x = Math.min(selection.start, selection.end);
       const width = Math.abs(selection.end - selection.start);
       selectionDiv.style.display = 'block';
       selectionDiv.style.left = x + 'px';
       selectionDiv.style.width = width + 'px';
+      // Se il loop è attivo e stiamo riproducendo, aggiorna le proprietà in tempo reale
       if (isLoopMode && source && audioBuffer) {
         const loopStartRatio = x / canvas.width;
         const loopEndRatio = (x + width) / canvas.width;
@@ -278,22 +307,19 @@
     });
 
     // --- Play/Pausa ---
-    // Poiché AudioBufferSourceNode è "usa e getta", per implementare Play/Pausa usiamo suspend/resume dell'AudioContext.
-    // Notare che questo sospende tutto l'audio nel contesto.
+    // Utilizziamo suspend/resume dell'AudioContext per mettere in pausa/riprendere.
     playPauseButton.addEventListener('click', async () => {
       if (!audioBuffer) return;
-      // Se non è in riproduzione, avvia (o riprendi) la riproduzione
       if (!isPlaying) {
-        // Se il contesto è sospeso, resume
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
-        // Se non esiste ancora un source (cioè, al primo play), crealo
+        // Riprendi il contesto se sospeso
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        // Se è il primo play, crea il source
         if (!source) {
           source = audioCtx.createBufferSource();
           source.buffer = audioBuffer;
           source.playbackRate.value = parseFloat(rateSlider.value);
           source.loop = isLoopMode;
+          // Imposta loop se in modalità loop
           if (isLoopMode && audioBuffer) {
             const x = Math.min(selection.start, selection.end);
             const width = Math.abs(selection.end - selection.start);
@@ -306,12 +332,11 @@
           source.start();
         }
         isPlaying = true;
-        playPauseButton.textContent = 'Pausa';
+        playPauseButton.textContent = "Pausa";
       } else {
-        // Se è in riproduzione, sospendi il contesto per mettere in pausa
         await audioCtx.suspend();
         isPlaying = false;
-        playPauseButton.textContent = 'Play';
+        playPauseButton.textContent = "Play";
       }
     });
 
@@ -329,7 +354,7 @@
           source.loopEnd = loopEndRatio * audioBuffer.duration;
         }
       }
-      loopButton.textContent = isLoopMode ? 'Loop ON' : 'Loop OFF';
+      loopButton.textContent = isLoopMode ? "Loop ON" : "Loop OFF";
     });
   </script>
 </body>
