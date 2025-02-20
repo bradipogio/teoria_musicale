@@ -96,6 +96,16 @@
       </div>
     </div>
   </div>
+  <div>Visite: <span id="counter">0</span></div>
+<script>
+  fetch('https://api.countapi.xyz/hit/bradipogio/indice')
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('counter').innerText = data.value;
+    })
+    .catch(error => console.error('Errore:', error));
+</script>
+
 
   <script>
     // Imposto i link solo per gli elementi esistenti
