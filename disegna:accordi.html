@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Sequenza di Accordi Pulita per Esportazione</title>
+  <!-- Includi Vexchords e html2canvas -->
+  <script src="https://unpkg.com/vexchords@latest/build/vexchords.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    /* Contenitore visivo della sequenza con bordi per l'interfaccia utente */
+    #sequenceContainer {
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 150px;
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .chord-item {
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid #000;
+      text-align: center;
+    }
+    .chord-controls button {
+      margin: 2px;
+    }
+    /* Contenitore usato esclusivamente per l'export: nascosto fuori schermo */
+    #exportContainer {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Generatore di Sequenze di Accordi</h1>
+  <label for="chordSelector">Scegli un Accordo:</label>
+  <select id="chordSelector">
+    <!-- Lista di esempio: aggiungi tutti gli accordi che ti servono -->
+    <option value="C">C</option>
+    <option value="Cm">Cm</option>
+    <option value="C7">C7</option>
+    <option value="Cmaj7">Cmaj7</option>
+    <option value="D">D</option>
+    <option value="Dm">Dm</option>
+    <option value="D7">D7</option>
+    <option value="E">E</option>
+    <option value="Em">Em</option>
+    <option value="F">F</option>
+    <option value="Fm">Fm</option>
+    <option value="G">G</option>
+    <option value="Gm">Gm</option>
+    <option value="A">A</option>
+    <option value="Am">Am</option>
+    <option value="B">B</option>
+    <option value="Bm">Bm</option>
+  </select>
+  <button id="addChord">+</button>
+
+  <!-- Contenitore per la sequenza degli accordi (con controlli e bordi) -->
+  <div id="sequenceContainer"></div>
+
+  <!-- Bottone per generare il PNG -->
+  <button id="generatePNG">Genera PNG Pulito</button>
+  <br>
+  <!-- Qui verrà mostrato il PNG risultante -->
+  <img id="resultImage" alt="PNG della Sequenza Pulita" style="margin-top:20px; border:1px solid #ccc;"/>
+
+  <!-- Contenitore temporaneo per l'export (solo diagrammi, senza controlli) -->
+  <div id="exportContainer"></div>
+
+  <script>
+    // Esegui il codice dopo il caricamento completo del DOM
+    document.addEventListener("DOMContentLoaded", function() {
+      const chordSelector = document.getElementById("chordSelector");
+      const addChordButton = document.getElementById("addChord");
+      const sequenceContainer = document.getElementById("sequenceContainer");
+      const generatePNGButton = document.getElementById("generatePNG");
+      const resultImage = document.getElementById("resultImage");
+      const exportContainer = document.getElementById("exportContainer");
+
+      // Funzione per creare un diagramma d'accordo (con controlli per l'interfaccia)
+      function createChordDiagram(chordName) {
+        // Contenitore dell'elemento accordo
+        const container = document.createElement("div");
+        container.className = "chord-item";
+        
+        // Div per il diagramma: questo è l'unico elemento che verrà esportato
+        const diagramDiv = document.createElement("div");
+        diagramDiv.className = "diagram";
+        container.appendChild(diagramDiv);
+
+        try {
+          // Verifica che Vexchords sia disponibile
+          let chordBox = new Vexchords.ChordBox(diagramDiv);
+          chordBox.draw(chordName);
+        } catch (err) {
+          console.error("Errore nel disegnare l'accordo:", err);
+        }
+
+        // Contenitore dei controlli (non verrà esportato)
+        const controlsDiv = document.createElement("div");
+        controlsDiv.className = "chord-controls";
+        
+        const moveLeftButton = document.createElement("button");
+        moveLeftButton.textContent = "<";
+        moveLeftButton.addEventListener("click", () => moveChord(container, -1));
+        controlsDiv.appendChild(moveLeftButton);
+
+        const removeButton = document.createElement("button");
+        removeButton.textContent = "-";
+        removeButton.addEventListener("click", () => removeChord(container));
+        controlsDiv.appendChild(removeButton);
+
+        const moveRightButton = document.createElement("button");
+        moveRightButton.textContent = ">";
+        moveRightButton.addEventListener("click", () => moveChord(container, 1));
+        controlsDiv.appendChild(moveRightButton);
+
+        container.appendChild(controlsDiv);
+        return container;
+      }
+
+      // Funzione per spostare un accordo all'interno della sequenza
+      function moveChord(chordElement, direction) {
+        const siblings = Array.from(sequenceContainer.children);
+        const index = siblings.indexOf(chordElement);
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= siblings.length) return;
+        sequenceContainer.removeChild(chordElement);
+        if (direction === 1 && newIndex >= siblings.length) {
+          sequenceContainer.appendChild(chordElement);
+        } else {
+          sequenceContainer.insertBefore(chordElement, sequenceContainer.children[newIndex]);
+        }
+      }
+
+      // Funzione per rimuovere un accordo dalla sequenza
+      function removeChord(chordElement) {
+        sequenceContainer.removeChild(chordElement);
+      }
+
+      // Aggiunge l'accordo selezionato alla sequenza
+      addChordButton.addEventListener("click", function() {
+        const chordName = chordSelector.value;
+        const chordElement = createChordDiagram(chordName);
+        sequenceContainer.appendChild(chordElement);
+      });
+
+      // Prepara un contenitore "pulito" per l'export, copiando solo i diagrammi
+      function prepareExport() {
+        // Pulisci il contenitore di export
+        exportContainer.innerHTML = "";
+        // Per ogni elemento della sequenza, clona solo il div con il diagramma
+        const chordItems = Array.from(sequenceContainer.getElementsByClassName("chord-item"));
+        chordItems.forEach(item => {
+          const diagram = item.querySelector(".diagram");
+          const clone = diagram.cloneNode(true);
+          // Rimuovi eventuali stili indesiderati (ad esempio bordi)
+          clone.style.border = "none";
+          clone.style.margin = "5px";
+          clone.style.padding = "0";
+          exportContainer.appendChild(clone);
+        });
+        // Rendi visibile il contenitore di export (fuori schermo) per html2canvas
+        exportContainer.style.display = "block";
+      }
+
+      // Genera il PNG "pulito" usando solo i diagrammi
+      generatePNGButton.addEventListener("click", function() {
+        prepareExport();
+        html2canvas(exportContainer).then(function(canvas) {
+          resultImage.src = canvas.toDataURL("image/png");
+          // Nascondi di nuovo il contenitore di export
+          exportContainer.style.display = "none";
+        });
+      });
+    });
+  </script>
+</body>
+</html>
