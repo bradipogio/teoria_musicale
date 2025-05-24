@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Unione PDF in Qualità Vettoriale con Selezione Multipla</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 { 
+    margin-bottom: 10px;
+    position: relative; 
+  text-align: center;}
+    input, button {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    /* Contenitore per la composizione */
+    #compositionContainer {
+      position: relative;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+    /* Canvas per il PDF della canzone (anteprima) */
+    #songCanvas {
+      display: block;
+    }
+    /* Overlay dei diagrammi */
+    .chordOverlay {
+      position: absolute;
+      border: 1px dashed #0077cc;
+      background: rgba(0, 119, 204, 0.1);
+      cursor: move;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    /* Overlay selezionato (bordo rosso) */
+    .chordOverlay.selected {
+      border-color: red;
+    }
+    /* Bottone di rimozione */
+    .removeBtn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #ffcc00;
+      color: #0033cc;
+      border: none;
+      border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 10;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .removeBtn:hover {
+      background-color: #0033cc;
+      color: #ffcc00;
+    }
+    /* Libreria dei diagrammi */
+    #libraryPanel {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .libraryItem {
+      display: inline-block;
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      text-align: center;
+    }
+    .libraryItem:hover {
+      background: #eef;
+    }
+    .libraryItem canvas {
+      display: block;
+      margin: 0 auto 5px;
+    }
+    /* Disposizione verticale dei bottoni */
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+    }
+    .button {
+      display: inline-block;
+      padding: 15px 25px;
+      font-size: 20px;
+      text-decoration: none;
+      color: white;
+      background-color: #007BFF;
+      border-radius: 8px;
+      transition: background 0.3s ease, transform 0.2s;
+      min-width: 200px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+    /* Nasconde l'input file originale */
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Aggiungi diagrammi degli accordi in alta qualità</h1>
+  
+  <div class="button-container">
+    <!-- Label stilizzato come bottone per selezionare il PDF della canzone -->
+    <label for="songPDF" class="button">Seleziona PDF della canzone</label>
+    <input type="file" id="songPDF" accept="application/pdf">
+  </div>
+    
+  <!-- Libreria: vengono mostrati i diagrammi con preview -->
+  <h2>Libreria Diagrammi</h2>
+  <div id="libraryPanel"></div>
+  
+  <!-- Area di composizione: PDF della canzone in background e overlay dei diagrammi -->
+  <h2>Area di Composizione</h2>
+   <!-- Bottone per generare il PDF finale -->
+   <button id="mergePDF" class="button">SALVA PDF</button>
+   <br>
+  <div id="compositionContainer">
+    <canvas id="songCanvas"></canvas>
+  </div>
+  
+  <!-- Inclusione delle librerie necessarie -->
+  <!-- pdf.js per il rendering (anteprime) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js';
+  </script>
+  <!-- interact.js per drag & drop e resizing -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <!-- pdf-lib per l'unione vettoriale -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  
+  <script>
+    /* --- VARIABILI GLOBALI --- */
+    const songPDFInput = document.getElementById('songPDF');
+    const libraryPanel = document.getElementById('libraryPanel');
+    const compositionContainer = document.getElementById('compositionContainer');
+    const songCanvas = document.getElementById('songCanvas');
+    const mergePDFButton = document.getElementById('mergePDF');
+    const songCtx = songCanvas.getContext('2d');
+    
+    // Dati relativi al PDF della canzone
+    let songPdfBytes = null;
+    let songPdfScale = 1; // scala usata per il rendering dell'anteprima
+    let songPdfPageSize = { width: 0, height: 0 };
+    
+    // Libreria dei diagrammi: array di { name, bytes }
+    let chordLibrary = [];
+    
+    // Array per la selezione multipla (overlay con bordo rosso)
+    let selectedOverlays = [];
+    
+    // Nome del file di output
+    let mergeFileName = 'output.pdf';
+    
+    /* --- CARICAMENTO DEL PDF DELLA CANZONE --- */
+    songPDFInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      // Imposta il nome del file di output basandosi sul PDF scelto
+      mergeFileName = file.name.replace(/\.pdf$/i, '') + ' (diagrammi).pdf';
+      songPdfBytes = await file.arrayBuffer();
+      const typedArray = new Uint8Array(songPdfBytes);
+      const pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+      const page = await pdfDoc.getPage(1);
+      songPdfScale = 1.5;  // scala di rendering per l'anteprima
+      const viewport = page.getViewport({ scale: songPdfScale });
+      songCanvas.width = viewport.width;
+      songCanvas.height = viewport.height;
+      compositionContainer.style.width = viewport.width + 'px';
+      compositionContainer.style.height = viewport.height + 'px';
+      // Dimensioni native in PDF points
+      songPdfPageSize.width = page.view[2];
+      songPdfPageSize.height = page.view[3];
+      const renderContext = { canvasContext: songCtx, viewport: viewport };
+      await page.render(renderContext).promise;
+    });
+    
+    /* --- CARICAMENTO DEI DIAGRAMMI AUTOMATICAMENTE DA GITHUB IN PARALLELO --- */
+    async function loadChordsFromGithub() {
+      try {
+        // Richiede la lista dei file dalla cartella del repository
+        const response = await fetch('https://api.github.com/repos/bradipogio/teoria_musicale/contents/diagrammi_vettoriali');
+        const files = await response.json();
+        // Ordina in ordine inverso e filtra solo i PDF
+        const validFiles = files.reverse().filter(file => file.type === 'file' && file.download_url.endsWith('.pdf'));
+        
+        // Scarica tutti i file in parallelo
+        const downloadPromises = validFiles.map(async (file) => {
+          const fileResponse = await fetch(file.download_url);
+          const fileBytes = await fileResponse.arrayBuffer();
+          return { name: file.name, bytes: fileBytes };
+        });
+        const downloadedFiles = await Promise.all(downloadPromises);
+        
+        // Svuota il pannello della libreria e resetta l'array interno
+        libraryPanel.innerHTML = "";
+        chordLibrary = [];
+        
+        // Processa ciascun file in parallelo per la preview
+        await Promise.all(downloadedFiles.map(async (entry, i) => {
+          chordLibrary.push({ name: entry.name, bytes: entry.bytes });
+          
+          const item = document.createElement('div');
+          item.classList.add('libraryItem');
+          // Usa l'indice corrente come dataset.index
+          item.dataset.index = i;
+          
+          const previewCanvas = document.createElement('canvas');
+          previewCanvas.width = 80;
+          previewCanvas.height = 80;
+          item.appendChild(previewCanvas);
+        
+          
+          libraryPanel.appendChild(item);
+          
+          // Renderizza la preview del PDF con pdf.js
+          try {
+            const chordDoc = await pdfjsLib.getDocument(new Uint8Array(entry.bytes)).promise;
+            const chordPage = await chordDoc.getPage(1);
+            const viewportTemp = chordPage.getViewport({ scale: 1 });
+            const scale = 80 / viewportTemp.width;
+            const viewport = chordPage.getViewport({ scale: scale });
+            previewCanvas.width = viewport.width;
+            previewCanvas.height = viewport.height;
+            await chordPage.render({
+              canvasContext: previewCanvas.getContext('2d'),
+              viewport: viewport
+            }).promise;
+          } catch (error) {
+            console.error('Errore nella preview della libreria:', error);
+          }
+          
+          // Al click, aggiunge (o seleziona, se Shift è premuto) l'overlay nell'area di composizione
+          item.addEventListener('click', async (event) => {
+            if (event.shiftKey) {
+              toggleOverlaySelectionByIndex(i);
+            } else {
+              await addChordOverlay(i);
+            }
+          });
+        }));
+      } catch (error) {
+        console.error('Errore nel caricamento dei diagrammi da GitHub:', error);
+      }
+    }
+    
+    // Carica i diagrammi al caricamento della pagina
+    window.addEventListener('load', loadChordsFromGithub);
+    
+    // Se clicchi in un'area vuota della composizione, deseleziona gli overlay (come sul desktop)
+    compositionContainer.addEventListener('click', (event) => {
+      // Se il click è direttamente sul contenitore o sul canvas, deseleziona
+      if (event.target === compositionContainer || event.target === songCanvas) {
+        selectedOverlays.forEach(overlay => overlay.classList.remove('selected'));
+        selectedOverlays = [];
+      }
+    });
+    
+    // Funzione per gestire la selezione/deselezione degli overlay in base all'indice
+    function toggleOverlaySelectionByIndex(chordIndex) {
+      const overlays = Array.from(compositionContainer.querySelectorAll(`.chordOverlay[data-index="${chordIndex}"]`));
+      overlays.forEach(overlay => {
+        if (selectedOverlays.includes(overlay)) {
+          overlay.classList.remove('selected');
+          selectedOverlays = selectedOverlays.filter(o => o !== overlay);
+        } else {
+          overlay.classList.add('selected');
+          selectedOverlays.push(overlay);
+        }
+      });
+    }
+    
+    /* --- FUNZIONE: AGGIUNGI OVERLAY CON PREVIEW DINAMICA --- */
+    async function addChordOverlay(chordIndex) {
+      const overlay = document.createElement('div');
+      overlay.classList.add('chordOverlay');
+      overlay.style.left = '50px';
+      overlay.style.top = '50px';
+      overlay.style.width = '150px'; // larghezza iniziale
+      overlay.dataset.index = chordIndex;
+      
+      // Cliccando sull'overlay, se Shift è premuto, attiva la selezione/deselezione
+      overlay.addEventListener('click', (e) => {
+        e.stopPropagation(); // evita il bubbling al compositionContainer
+        if (e.shiftKey) {
+          toggleOverlaySelectionByIndex(chordIndex);
+        }
+      });
+      
+      // Bottone per la rimozione dell'overlay
+      const removeBtn = document.createElement('button');
+      removeBtn.classList.add('removeBtn');
+      removeBtn.textContent = '-';
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        overlay.remove();
+        selectedOverlays = selectedOverlays.filter(o => o !== overlay);
+      });
+      overlay.appendChild(removeBtn);
+      
+      // Canvas per la preview del diagramma
+      const previewCanvas = document.createElement('canvas');
+      overlay.appendChild(previewCanvas);
+      
+      compositionContainer.appendChild(overlay);
+      
+      try {
+        const chordData = chordLibrary[chordIndex].bytes;
+        const chordDoc = await pdfjsLib.getDocument(new Uint8Array(chordData)).promise;
+        const chordPage = await chordDoc.getPage(1);
+        const viewportOrig = chordPage.getViewport({ scale: 1 });
+        const scale = 150 / viewportOrig.width;
+        const viewport = chordPage.getViewport({ scale: scale });
+        overlay.style.height = viewport.height + 'px';
+        previewCanvas.width = viewport.width;
+        previewCanvas.height = viewport.height;
+        await chordPage.render({
+          canvasContext: previewCanvas.getContext('2d'),
+          viewport: viewport
+        }).promise;
+        // Salva alcune informazioni per aggiornamenti futuri
+        overlay._chordPage = chordPage;
+        overlay._chordOriginalWidth = viewport.width;
+        overlay._chordOriginalHeight = viewport.height;
+        overlay.dataset.ratio = viewport.width / viewport.height;
+      } catch (error) {
+        console.error('Errore nel rendering della preview dell’overlay:', error);
+      }
+      
+      // Abilita drag & drop e resizing con interact.js
+      interact(overlay)
+        .draggable({
+          modifiers: [
+            interact.modifiers.snap({
+              targets: [ interact.snappers.grid({ x: 10, y: 10 }) ],
+              range: Infinity,
+              relativePoints: [ { x: 0, y: 0 } ]
+            }),
+            interact.modifiers.restrictRect({
+              restriction: compositionContainer,
+              endOnly: true
+            })
+          ],
+          listeners: {
+            move (event) {
+              // Se più overlay sono selezionati e l'overlay corrente è tra questi
+              if (selectedOverlays.length > 0 && selectedOverlays.includes(event.target)) {
+                selectedOverlays.forEach(o => {
+                  let x = (parseFloat(o.getAttribute('data-x')) || 0) + event.dx;
+                  let y = (parseFloat(o.getAttribute('data-y')) || 0) + event.dy;
+                  o.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+                  o.setAttribute('data-x', x);
+                  o.setAttribute('data-y', y);
+                });
+              } else {
+                const target = event.target;
+                let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+                target.setAttribute('data-x', x);
+                target.setAttribute('data-y', y);
+              }
+            }
+          }
+        })
+        .resizable({
+          edges: { left: true, right: true, bottom: true, top: true },
+          modifiers: [
+            interact.modifiers.restrictEdges({
+              outer: compositionContainer,
+              endOnly: true,
+            }),
+            interact.modifiers.restrictSize({
+              min: { width: 30, height: 30 }
+            })
+          ],
+          listeners: {
+            move (event) {
+              const target = event.target;
+              const ratio = parseFloat(target.dataset.ratio) || 1;
+              let newWidth = event.rect.width;
+              let newHeight = newWidth / ratio;
+              target.style.width = newWidth + 'px';
+              target.style.height = newHeight + 'px';
+              let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.deltaRect.left;
+              let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.deltaRect.top;
+              target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+              target.setAttribute('data-x', x);
+              target.setAttribute('data-y', y);
+              // Aggiorna la preview di tutti gli overlay
+              const allOverlays = compositionContainer.querySelectorAll('.chordOverlay');
+              allOverlays.forEach(o => {
+                o.style.width = newWidth + 'px';
+                o.style.height = newHeight + 'px';
+                const canvas = o.querySelector('canvas');
+                if (canvas) {
+                  canvas.width = newWidth;
+                  canvas.height = newHeight;
+                }
+                updateChordPreview(o);
+              });
+            }
+          }
+        });
+      
+      // Se l'overlay non è già selezionato, selezionalo
+      if (!selectedOverlays.includes(overlay)) {
+        selectedOverlays.push(overlay);
+        overlay.classList.add('selected');
+      }
+    }
+    
+    // Funzione per aggiornare la preview (con debounce)
+    async function updateChordPreview(overlay) {
+      const previewCanvas = overlay.querySelector('canvas');
+      if (!overlay._chordPage) return;
+      if (overlay._updateTimeout) {
+        clearTimeout(overlay._updateTimeout);
+      }
+      overlay._updateTimeout = setTimeout(async () => {
+        if (overlay._renderTask) {
+          overlay._renderTask.cancel();
+          try {
+            await overlay._renderTask.promise;
+          } catch (e) { }
+          overlay._renderTask = null;
+        }
+        const scale = previewCanvas.width / overlay._chordOriginalWidth;
+        const viewport = overlay._chordPage.getViewport({ scale: scale });
+        previewCanvas.width = viewport.width;
+        previewCanvas.height = viewport.height;
+        overlay._renderTask = overlay._chordPage.render({
+          canvasContext: previewCanvas.getContext('2d'),
+          viewport: viewport
+        });
+        try {
+          await overlay._renderTask.promise;
+        } catch (e) {
+          console.error("Render cancellato:", e);
+        }
+        overlay._renderTask = null;
+      }, 150);
+    }
+    
+    /* --- UNIONE VETTORIALE CON pdf-lib --- */
+    mergePDFButton.addEventListener('click', async () => {
+      if (!songPdfBytes) {
+        alert("Carica il PDF della canzone!");
+        return;
+      }
+      const songPdfDoc = await PDFLib.PDFDocument.load(songPdfBytes);
+      const mergedPdfDoc = await PDFLib.PDFDocument.create();
+      const [copiedSongPage] = await mergedPdfDoc.copyPages(songPdfDoc, [0]);
+      mergedPdfDoc.addPage(copiedSongPage);
+      
+      const songPageHeight = copiedSongPage.getHeight();
+      
+      const overlays = compositionContainer.querySelectorAll('.chordOverlay');
+      for (const overlay of overlays) {
+        const chordIndex = overlay.dataset.index;
+        const chordData = chordLibrary[chordIndex];
+        if (!chordData) continue;
+        const chordPdfDoc = await PDFLib.PDFDocument.load(chordData.bytes);
+        const chordPage = chordPdfDoc.getPage(0);
+        const chordPageWidth = chordPage.getWidth();
+        const rect = overlay.getBoundingClientRect();
+        const containerRect = compositionContainer.getBoundingClientRect();
+        const relX = rect.left - containerRect.left;
+        const relY = rect.top - containerRect.top;
+        // Conversione da pixel a PDF points per la posizione
+        const x_pdf = relX / songPdfScale;
+        const y_pdf = songPageHeight - ((relY + overlay.offsetHeight) / songPdfScale);
+        // Calcola il fattore di scala corretto: convertendo l'offsetWidth in PDF points
+        const scaleChord = (overlay.offsetWidth / songPdfScale) / chordPageWidth;
+        const embeddedChord = await mergedPdfDoc.embedPage(chordPage);
+        copiedSongPage.drawPage(embeddedChord, {
+          x: x_pdf,
+          y: y_pdf,
+          xScale: scaleChord,
+          yScale: scaleChord
+        });
+      }
+      
+      const mergedPdfBytes = await mergedPdfDoc.save();
+      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Usa il nome del file impostato dal PDF scelto
+      a.download = mergeFileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>

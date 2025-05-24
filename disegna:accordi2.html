@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Generatore di Sequenze di Accordi per Chitarra</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .container { max-width: 900px; margin: auto; padding: 20px; }
+    h1, h2, h3 { text-align: center; }
+    .controls { margin: 10px 0; text-align: center; }
+    button {
+      padding: 8px 16px;
+      background-color: #1976D2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px;
+      transition: transform 0.1s, background-color 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+      background-color: #FFB300;
+      color: black;
+    }
+    .radio-group { margin: 10px 0; text-align: center; }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label {
+      display: inline-block;
+      padding: 6px 12px;
+      background-color: #1976D2;
+      color: white;
+      border-radius: 4px;
+      margin: 3px;
+      cursor: pointer;
+      transition: transform 0.1s, background-color 0.2s;
+    }
+    .radio-group label:hover {
+      transform: scale(1.05);
+      background-color: #FFB300;
+      color: black;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      background-color: #FFB300;
+      color: black;
+    }
+    input[type="text"], input[type="number"] {
+      font-size: 16px;
+      padding: 4px;
+      margin: 10px auto;
+      display: block;
+      text-align: center;
+    }
+    #chordDiagram {
+      position: relative;
+      width: 200px;
+      height: 250px;
+      margin: 0 auto;
+    }
+    .sequenceSectionItem {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    .chordSequence {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+      justify-items: center;
+    }
+    .sequenceItem { text-align: center; }
+    .sequenceItem button { margin-top: 4px; padding: 2px 6px; font-size: 14px; }
+
+    #fullScreenModal {
+      display: none;
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: white;
+      overflow-y: auto;
+      z-index: 10000;
+      padding: 20px;
+    }
+    #fullScreenModal .modal-content {
+      max-width: 800px;
+      margin: auto;
+      position: relative;
+    }
+    #fullscreenSongTitle {
+      text-align: center;
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    #fullScreenSequence > .section {
+      margin-bottom: 30px;
+    }
+    #fullScreenSequence .section h3 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Generatore di Sequenze di Accordi per Chitarra</h1>
+
+    <!-- Titolo del brano -->
+    <section id="songTitleSection">
+      <h2>Titolo del brano</h2>
+      <input type="text" id="songTitle" value="--inserisci titolo--" />
+    </section>
+
+    <!-- Generatore -->
+    <section id="chordGeneratorSection">
+      <div class="controls">
+        <div id="chordRootContainer" class="radio-group">
+          <input type="radio" name="chordRoot" id="chordRoot_Do" value="Do" checked>
+          <label for="chordRoot_Do">Do</label>
+          <input type="radio" name="chordRoot" id="chordRoot_Re" value="Re">
+          <label for="chordRoot_Re">Re</label>
+          <input type="radio" name="chordRoot" id="chordRoot_Mi" value="Mi">
+          <label for="chordRoot_Mi">Mi</label>
+          <input type="radio" name="chordRoot" id="chordRoot_Fa" value="Fa">
+          <label for="chordRoot_Fa">Fa</label>
+          <input type="radio" name="chordRoot" id="chordRoot_Sol" value="Sol">
+          <label for="chordRoot_Sol">Sol</label>
+          <input type="radio" name="chordRoot" id="chordRoot_La" value="La">
+          <label for="chordRoot_La">La</label>
+          <input type="radio" name="chordRoot" id="chordRoot_Si" value="Si">
+          <label for="chordRoot_Si">Si</label>
+        </div>
+        <div id="chordTypeContainer" class="radio-group">
+          <input type="radio" name="chordType" id="chordType_Maggiore" value="" checked>
+          <label for="chordType_Maggiore">Maggiore</label>
+          <input type="radio" name="chordType" id="chordType_Minore" value="m">
+          <label for="chordType_Minore">Minore</label>
+          <input type="radio" name="chordType" id="chordType_Settima" value="7">
+          <label for="chordType_Settima">Settima</label>
+        </div>
+        <label for="startFret">Fret di partenza:</label>
+        <input type="number" id="startFret" value="0" min="0" style="width:50px;" />
+      </div>
+      <input type="text" id="chordNameInput" placeholder="Nome accordo" />
+
+      <div id="chordDiagram"></div>
+
+      <div class="controls">
+        <input type="text" id="currentSectionName" placeholder="Nome sezione" value="Strofa" />
+        <button onclick="createNewSection()">Nuova Sezione</button>
+        <button onclick="addChordToSection()">Aggiungi Accordo</button>
+        <button onclick="displayFullScreenSequence()">Anteprima</button>
+      </div>
+    </section>
+
+    <!-- Sequenza in pagina -->
+    <section id="sequenceSection">
+      <h2>Sequenza</h2>
+      <div id="sectionsContainer"></div>
+    </section>
+  </div>
+
+  <!-- Modal anteprima + PDF -->
+  <div id="fullScreenModal">
+    <div class="modal-content">
+      <div id="fullscreenSongTitle"></div>
+      <div id="fullScreenSequence"></div>
+      <div id="modalControls" style="text-align:center; margin-top:20px;">
+        <button onclick="saveFullScreenPdf()">Salva PDF</button>
+        <button onclick="closeFullScreen()">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let customChordData = [];
+    let currentChordData = [];
+    let currentStartFret = 0;
+    let sections = [];
+    let currentSectionIndex = -1;
+
+    const chordShapes = {
+      'Do':   [[1,0,""],[2,1,"1"],[3,0,""],[4,2,"2"],[5,3,"3"]],
+      'Dom':  [[1,3,"1"],[2,4,"2"],[3,5,"5"],[4,5,"4"],[5,3,"1"]],
+      'Do7':  [[1,0,""],[2,1,"1"],[3,3,"4"],[4,2,"2"],[5,3,"3"]],
+      'Re':   [[1,2,"2"],[2,3,"3"],[3,2,"1"],[4,0,""]],
+      'Rem':  [[1,1,"1"],[2,3,"3"],[3,2,"2"],[4,0,""]],
+      'Re7':  [[1,2,"2"],[2,1,"1"],[3,2,"3"],[4,0,""]],
+      'Mi':   [[1,0,""],[2,0,""],[3,1,"1"],[4,2,"3"],[5,2,"2"],[6,0,""]],
+      'Mim':  [[1,0,""],[2,0,""],[3,0,""],[4,2,"3"],[5,2,"2"],[6,0,""]],
+      'Mi7':  [[1,0,""],[2,0,""],[3,1,"1"],[4,0,""],[5,2,"2"],[6,0,""]],
+      'Fa':   [[1,1,"1"],[3,2,"2"],[4,3,"3"],[5,3,"4"],[6,1,"1"]],
+      'Fam':  [[1,1,"1"],[4,3,"3"],[5,3,"4"],[6,1,"1"]],
+      'Fa7':  [[1,1,"1"],[3,2,"2"],[5,3,"3"],[6,1,"1"]],
+      'Sol':  [[1,3,"4"],[2,0,""],[3,0,""],[4,0,""],[5,2,"2"],[6,3,"3"]],
+      'Solm': [[1,3,"1"],[4,5,"3"],[5,5,"3"],[6,3,"1"]],
+      'Sol7': [[1,1,"1"],[2,0,""],[3,0,""],[4,0,""],[5,2,"2"],[6,3,"3"]],
+      'La':   [[1,0,""],[2,2,"3"],[3,2,"2"],[4,2,"1"],[5,0,""]],
+      'Lam':  [[1,0,""],[2,1,"1"],[3,2,"3"],[4,2,"2"],[5,0,""]],
+      'La7':  [[1,0,""],[2,2,"3"],[3,0,""],[4,2,"2"],[5,0,""]],
+      'Si':   [[1,2,"1"],[2,4,"4"],[3,4,"3"],[4,4,"2"],[5,2,"1"]],
+      'Sim':  [[1,2,"1"],[2,3,"2"],[3,4,"4"],[4,4,"3"],[5,2,"1"]],
+      'Si7':  [[1,2,"1"],[2,4,"4"],[4,4,"3"],[5,2,"1"]]
+    };
+
+    function createSVG(w=200,h=250,startFret=0,editable=true){
+      const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("width",w);
+      svg.setAttribute("height",h);
+      svg.setAttribute("viewBox","0 0 200 250");
+      svg.style.cursor = editable?"crosshair":"default";
+      if(editable) svg.addEventListener("click", onSvgClick);
+      return svg;
+    }
+
+    function drawFretboard(svg, sf){
+      // Disegna le corde (linee verticali)
+      for(let i=0;i<6;i++){
+        const x=40+i*24;
+        const l=document.createElementNS(svg.namespaceURI,"line");
+        l.setAttribute("x1",x);l.setAttribute("y1",40);
+        l.setAttribute("x2",x);l.setAttribute("y2",220);
+        l.setAttribute("stroke","black");l.setAttribute("stroke-width","2");
+        svg.appendChild(l);
+      }
+      
+      // Disegna i tasti (linee orizzontali)
+      for(let i=0;i<6;i++){
+        const y=40+i*36;
+        const l=document.createElementNS(svg.namespaceURI,"line");
+        l.setAttribute("x1",40);l.setAttribute("y1",y);
+        l.setAttribute("x2",160);l.setAttribute("y2",y);
+        l.setAttribute("stroke","black");
+        // Il primo tasto (capotasto) è più spesso se stiamo partendo da fret 0
+        l.setAttribute("stroke-width",(i===0&&sf===0)?"4":"2");
+        svg.appendChild(l);
+      }
+      
+      // Indicatore del fret di partenza (solo se > 0)
+      if(sf>0){
+        const p=document.createElementNS(svg.namespaceURI,"polygon");
+        p.setAttribute("points","0,55 0,65 10,60");
+        p.setAttribute("fill","black");
+        svg.appendChild(p);
+        const t=document.createElementNS(svg.namespaceURI,"text");
+        t.setAttribute("x",15);
+        t.setAttribute("y",67);
+        t.setAttribute("font-size","20");
+        t.setAttribute("font-weight","bold");
+        t.setAttribute("text-anchor","start");
+        t.textContent=sf;
+        svg.appendChild(t);
+      }
+    }
+
+    function drawDotCircle(g,str,fr,sf,idx,ed=true){
+      const x=40+(6-str)*24;
+      // La posizione Y è sempre basata sul fret relativo dell'accordo (fr), non influenzata da sf
+      const y=40+(fr-1+0.5)*36;
+      
+      const c=document.createElementNS(g.namespaceURI,"circle");
+      c.setAttribute("cx",x); c.setAttribute("cy",y);
+      c.setAttribute("r",10); c.setAttribute("fill","black");
+      c.setAttribute("data-string",str);
+      c.setAttribute("data-fret",fr);
+      
+      if(ed){
+        c.addEventListener("mouseover",()=>c.setAttribute("fill","red"));
+        c.addEventListener("mouseout",()=>c.setAttribute("fill","black"));
+        c.addEventListener("click",e=>{
+          e.stopPropagation();
+          removeNoteFromData(str);
+          redrawCurrentChord();
+        });
+      }
+      g.appendChild(c);
+    }
+
+    function drawOpen(g,str,sf,ed=true){
+      const x=40+(6-str)*24;
+      const c=document.createElementNS(g.namespaceURI,"circle");
+      c.setAttribute("cx",x);c.setAttribute("cy","20");
+      c.setAttribute("r","8");c.setAttribute("stroke","black");
+      c.setAttribute("stroke-width","2");c.setAttribute("fill","none");
+      c.setAttribute("data-string",str);
+      c.setAttribute("data-fret","0");
+      
+      if(ed){
+        c.addEventListener("mouseover",()=>{c.setAttribute("stroke","red");c.setAttribute("fill","red");});
+        c.addEventListener("mouseout",()=>{c.setAttribute("stroke","black");c.setAttribute("fill","none");});
+        c.addEventListener("click",e=>{
+          e.stopPropagation();
+          removeNoteFromData(str);
+          redrawCurrentChord();
+        });
+      }
+      g.appendChild(c);
+    }
+
+    function removeNoteFromData(string) {
+      // Rimuovi la nota dalla stringa specificata
+      if (customChordData.length > 0) {
+        customChordData = customChordData.filter(d => d[0] !== string);
+      } else {
+        // Se stiamo modificando l'accordo preset, crea una copia personalizzata
+        customChordData = currentChordData.filter(d => d[0] !== string);
+      }
+    }
+
+    function redrawCurrentChord() {
+      const data = customChordData.length > 0 ? customChordData : currentChordData;
+      const container = document.getElementById("chordDiagram");
+      container.innerHTML = "";
+      const svg = createSVG(200, 250, currentStartFret, true);
+      redrawChord(svg, data, currentStartFret, true);
+      container.appendChild(svg);
+    }
+
+    function redrawChord(svg,data,sf,ed=true){
+      svg.innerHTML="";
+      drawFretboard(svg,sf);
+      const gb=document.createElementNS(svg.namespaceURI,"g");
+      const gd=document.createElementNS(svg.namespaceURI,"g");
+      const gt=document.createElementNS(svg.namespaceURI,"g");
+      
+      data.forEach((d,i)=>{
+        const [st,fr,fi]=d;
+        if(fr===0) drawOpen(gd,st,sf,ed);
+        else        drawDotCircle(gd,st,fr,sf,i,ed);
+      });
+      
+      // Disegna le barre
+      const bgs={};
+      data.forEach(([st,fr,fi])=>{
+        if(fi==="1"&&fr!==0){
+          bgs[fr]=bgs[fr]||[];
+          bgs[fr].push(40+(6-st)*24);
+        }
+      });
+      for(let fr in bgs){
+        const xs=bgs[fr];
+        if(xs.length>=2){
+          const mn=Math.min(...xs), mx=Math.max(...xs);
+          // La posizione Y della barra è basata sul fret dell'accordo, non sul fret di partenza
+          const y=40+(fr-1+0.5)*36;
+          const l=document.createElementNS(svg.namespaceURI,"line");
+          l.setAttribute("x1",mn);l.setAttribute("y1",y);
+          l.setAttribute("x2",mx);l.setAttribute("y2",y);
+          l.setAttribute("stroke","black");
+          l.setAttribute("stroke-width","6");
+          l.setAttribute("stroke-linecap","round");
+          gb.appendChild(l);
+        }
+      }
+      
+      // Disegna i numeri delle dita
+      data.forEach(([st,fr,fi])=>{
+        if(fr!==0&&fi){
+          const x=40+(6-st)*24;
+          // La posizione Y del numero è basata sul fret dell'accordo, non sul fret di partenza
+          const y=40+(fr-1+0.5)*36+5;
+          const t=document.createElementNS(svg.namespaceURI,"text");
+          t.setAttribute("x",x);t.setAttribute("y",y);
+          t.setAttribute("text-anchor","middle");
+          t.setAttribute("font-size","16");
+          t.setAttribute("fill","white");
+          t.textContent=fi;
+          gt.appendChild(t);
+        }
+      });
+      svg.appendChild(gb);
+      svg.appendChild(gd);
+      svg.appendChild(gt);
+    }
+
+    function onSvgClick(e){
+      const svg=e.currentTarget;
+      const rect=svg.getBoundingClientRect();
+      const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+      
+      // Calcola il fret relativo cliccato (sempre relativo alla posizione nell'accordo)
+      const fret = Math.floor((cy-40)/36) + 1;
+      let str = 6-Math.round((cx-40)/24);
+      
+      if(str<1||str>6||fret<1) return;
+      
+      // Se non abbiamo ancora customChordData, copiamo da currentChordData
+      if(customChordData.length===0&&currentChordData.length>0){
+        customChordData=JSON.parse(JSON.stringify(currentChordData));
+      }
+      
+      const bubble=document.createElement("input");
+      bubble.type="text";bubble.style.width="30px";
+      bubble.style.fontSize="14px";bubble.style.position="absolute";
+      const pc=svg.parentNode.getBoundingClientRect();
+      bubble.style.left=(e.clientX-pc.left-15)+"px";
+      bubble.style.top=(e.clientY-pc.top-15)+"px";
+      bubble.style.zIndex="1000";
+      svg.parentNode.appendChild(bubble);
+      bubble.focus();
+      
+      const fin=()=>{
+        const fg=bubble.value||null;
+        // Rimuovi eventuali note esistenti su questa stringa
+        customChordData=customChordData.filter(d=>d[0]!==str);
+        // Aggiungi la nuova nota (il fret rimane relativo all'accordo)
+        customChordData.push([str,fret,fg]);
+        svg.parentNode.removeChild(bubble);
+        redrawCurrentChord();
+      };
+      bubble.addEventListener("blur",fin);
+      bubble.addEventListener("keydown",ev=>{ 
+        if(ev.key==="Enter") fin(); 
+        if(ev.key==="Escape"){
+          svg.parentNode.removeChild(bubble);
+        }
+      });
+    }
+
+    function generateChord(){
+      const root=document.querySelector('input[name="chordRoot"]:checked').value;
+      const type=document.querySelector('input[name="chordType"]:checked').value;
+      const name=root+(type||"");
+      const preset=chordShapes[name]||[];
+      
+      // Reset dei dati personalizzati
+      customChordData=[];
+      currentChordData=JSON.parse(JSON.stringify(preset));
+      currentStartFret=parseInt(document.getElementById("startFret").value)||0;
+      
+      // Imposta il nome dell'accordo ma mantienilo editabile
+      if(!document.getElementById("chordNameInput").value || 
+         document.getElementById("chordNameInput").value === name ||
+         document.getElementById("chordNameInput").placeholder) {
+        document.getElementById("chordNameInput").value=name;
+      }
+      
+      redrawCurrentChord();
+    }
+
+    function createNewSection(){
+      const nm=document.getElementById("currentSectionName").value.trim()||"Sezione";
+      sections.push({name:nm,chords:[]});
+      currentSectionIndex=sections.length-1;
+      updateSequenceDisplay();
+    }
+    
+    function addChordToSection(){
+      const data = customChordData.length > 0 ? customChordData : currentChordData;
+      if(!data.length){ alert("Genera prima un accordo!"); return; }
+      if(currentSectionIndex<0) createNewSection();
+      
+      const nm=document.getElementById("chordNameInput").value || "Accordo";
+      sections[currentSectionIndex].chords.push({
+        name:nm,
+        data:JSON.parse(JSON.stringify(data)),
+        startFret:currentStartFret
+      });
+      
+      // Reset dopo l'aggiunta
+      customChordData=[];
+      updateSequenceDisplay();
+    }
+    
+    function updateSequenceDisplay(){
+      const ct=document.getElementById("sectionsContainer");
+      ct.innerHTML="";
+      sections.forEach((sec,si)=>{
+        const div=document.createElement("div");
+        div.className="sequenceSectionItem";
+        const h3=document.createElement("h3");
+        h3.textContent=sec.name;
+        h3.contentEditable=true;
+        h3.addEventListener("input",()=>sec.name=h3.textContent);
+        div.appendChild(h3);
+        const cds=document.createElement("div");
+        cds.className="chordSequence";
+        sec.chords.forEach((ch,ci)=>{
+          const it=document.createElement("div");
+          it.className="sequenceItem";
+          const nm=document.createElement("div");
+          nm.textContent=ch.name;
+          nm.style.fontWeight="bold";
+          it.appendChild(nm);
+          const svg=createSVG(200,250,ch.startFret,false);
+          redrawChord(svg,ch.data,ch.startFret,false);
+          it.appendChild(svg);
+          const rm=document.createElement("button");
+          rm.textContent="×";
+          rm.addEventListener("click",()=>{
+            sec.chords.splice(ci,1);
+            updateSequenceDisplay();
+          });
+          it.appendChild(rm);
+          cds.appendChild(it);
+        });
+        div.appendChild(cds);
+        ct.appendChild(div);
+      });
+    }
+
+    function displayFullScreenSequence(){
+      const mod=document.getElementById("fullScreenModal");
+      const title=document.getElementById("fullscreenSongTitle");
+      const fsq=document.getElementById("fullScreenSequence");
+      title.textContent=document.getElementById("songTitle").value;
+      fsq.innerHTML="";
+      sections.forEach(sec=>{
+        const w=document.createElement("div");
+        w.className="section";
+        const h3=document.createElement("h3");
+        h3.textContent=sec.name;
+        w.appendChild(h3);
+        const cds=document.createElement("div");
+        cds.className="chordSequence";
+        sec.chords.forEach(ch=>{
+          const it=document.createElement("div");
+          it.className="sequenceItem";
+          const nm=document.createElement("div");
+          nm.textContent=ch.name;
+          nm.style.fontSize="20px";
+          nm.style.fontWeight="bold";
+          nm.style.marginBottom="4px";
+          it.appendChild(nm);
+          const svg=createSVG(200,250,ch.startFret,false);
+          redrawChord(svg,ch.data,ch.startFret,false);
+          it.appendChild(svg);
+          cds.appendChild(it);
+        });
+        w.appendChild(cds);
+        fsq.appendChild(w);
+      });
+      mod.style.display="block";
+    }
+    
+    function closeFullScreen(){
+      document.getElementById("fullScreenModal").style.display="none";
+    }
+    
+    async function saveFullScreenPdf(){
+      const ctl = document.getElementById("modalControls");
+      ctl.style.display = "none";
+
+      const mc = document.querySelector("#fullScreenModal .modal-content");
+      const canvas = await html2canvas(mc, {scale:2});
+      const img = canvas.toDataURL("image/png");
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p','pt','a4');
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const ih = canvas.height * pw / canvas.width;
+      pdf.addImage(img,'PNG',0,0,pw, ih>ph?ph:ih);
+
+      ctl.style.display = "";
+
+      let title = document.getElementById("songTitle").value.trim() || "sequenza_accordi";
+      pdf.save(title + ".pdf");
+    }
+
+    // Event listeners
+    document.querySelectorAll('input[name="chordRoot"]').forEach(el=>el.addEventListener("change",generateChord));
+    document.querySelectorAll('input[name="chordType"]').forEach(el=>el.addEventListener("change",generateChord));
+    document.getElementById("startFret").addEventListener("change",generateChord);
+    
+    // Inizializzazione
+    window.onload = generateChord;
+  </script>
+</body>
+</html>

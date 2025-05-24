@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Allenamento EQ – Versione Aggiornata</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .container {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 1px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .settings-container,
+    .game-container {
+      max-width: 650px;
+      width: 100%;
+    }
+    .slider-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0px;
+      justify-content: space-around;
+    }
+    /* Nuovo stile per i container degli slider: testo e fader su un'unica riga */
+    label.slider-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      width: 220px;
+      margin: 5px auto;
+    }
+    label.slider-container span {
+      white-space: nowrap;
+      font-size: 0.9em;
+    }
+    button, input[type="button"] {
+      background-color: #D35400;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+      font-size: 1em;
+      border-radius: 8px;
+    }
+    button:hover, input[type="button"]:hover {
+      transform: scale(1.1);
+      background-color: #F39C12;
+      color: #000;
+    }
+    .radio-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border: 2px solid #007ACC;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+      margin: 5px;
+      background-color: white;
+    }
+    .radio-btn input {
+      display: none;
+    }
+    .radio-btn span {
+      pointer-events: none;
+    }
+    .radio-btn.checked {
+      background-color: #FFC107;
+      color: #000;
+    }
+    .radio-btn:hover {
+      transform: scale(1.1);
+    }
+    canvas {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 10px;
+      transition: background-color 0.3s;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 200px;
+      height: 15px;
+      background: #ddd;
+      border-radius: 10px;
+      outline: none;
+      margin: 5px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #007ACC;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      background: #FFC107;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Sezione Impostazioni -->
+  <div class="settings-container">
+
+    <div class="container">
+      <h1>Allenamento EQ</h1>
+
+      <label>
+        Carica brano:
+        <input type="file" id="audioFile" accept="audio/*">
+      </label>
+    </div>
+    <div class="container slider-group">
+      <label class="slider-container">
+        <span id="gainValue">Gain 10 dB</span>
+        <input type="range" id="gainDial" min="-20" max="20" value="10">
+      </label>
+      <label class="slider-container">
+        <span id="qValue">Q 1.3</span>
+        <input type="range" id="qDial" min="0.1" max="10" step="0.1" value="1.3">
+      </label>
+      <label class="slider-container">
+        <span id="lowerLimitValue">Min 50 Hz</span>
+        <input type="range" id="lowerLimitSlider" min="1.30" max="2.48" step="0.01" value="1.70">
+      </label>
+      <label class="slider-container">
+        <span id="upperLimitValue">Max 12000 Hz</span>
+        <input type="range" id="upperLimitSlider" min="3.70" max="4.30" step="0.01" value="4.08">
+      </label>
+      <label class="slider-container">
+        <span id="difficultyValue">Difficoltà: Medio</span>
+        <input type="range" id="difficultyDial" min="0" max="1" step="0.01" value="0.5">
+      </label>
+    </div>
+    <div class="container">
+      <label class="slider-container">
+        <span id="outputGainValue">Output Gain Multiplier: 1.00</span>
+        <input type="range" id="outputGainDial" min="0" max="1" step="0.01" value="1">
+      </label>
+      <canvas id="gainMeterCanvas" width="300" height="30"></canvas>
+      <br>
+      <button id="playButton">Play</button>
+      <button id="pauseButton">Pausa</button>
+      <button id="stopButton">Stop</button>
+    </div>
+  </div>
+  
+  <!-- Sezione Gioco -->
+  <div class="game-container">
+    <div class="container">
+      <h2>Seleziona la frequenza corretta</h2>
+      <span>Scegli modalità:</span>
+      <label class="radio-btn">
+        <input type="radio" name="processingMode" value="flat">
+        <span>Flat</span>
+      </label>
+      <label class="radio-btn">
+        <input type="radio" name="processingMode" value="EQQuestion" checked>
+        <span>EQ Domanda</span>
+      </label>
+      <label class="radio-btn">
+        <input type="radio" name="processingMode" value="EQAnswer">
+        <span>EQ Risposta</span>
+      </label>
+      <div id="candidateRadioGroup"></div>
+      <button id="submitAnswer">Invia risposta</button>
+      <button id="hintButton">Suggerimento</button>
+    </div>
+    <div class="container">
+      <canvas id="eqCurve" width="500" height="300"></canvas>
+    </div>
+    <div class="container">
+      <div id="message"></div>
+    </div>
+  </div>
+  
+  <script>
+    // Costanti per spread (non visibili)
+    const SPREAD_EASY = 7.3;
+    const SPREAD_DIFFICULT = 1;
+    
+    // Variabili globali per audio e processing
+    let audioContext;
+    let audioElement;
+    let mediaSource;
+    let isPlaying = false;
+    let currentMode = "EQQuestion"; // default su EQ Domanda
+
+    // Nodi per le branche
+    let flatGain, eqQuestionFilter, eqQuestionGain, eqAnswerFilter, eqAnswerGain, masterGain;
+    let outputGain, meterAnalyser; // per output e gain meter
+
+    // Parametri per il gioco EQ
+    let correctFrequency = 0;       // frequenza corretta per EQ Domanda
+    let candidateFrequencies = [];  // array delle 5 candidate (ordinate)
+    let selectedCandidate = null;   // frequenza scelta in EQ Risposta
+    let correctCandidateIndex = -1; // indice della candidata corretta
+
+    // Variabili per flash (suggerimento) e per il gain meter
+    let flashHint = false;
+    let flashToggle = false;
+    let smoothRMS = 0;
+    const smoothingFactor = 0.1;
+
+    // Riferimenti agli elementi HTML
+    const fileInput = document.getElementById('audioFile');
+    const playButton = document.getElementById('playButton');
+    const pauseButton = document.getElementById('pauseButton');
+    const stopButton = document.getElementById('stopButton');
+    const candidateRadioGroupDiv = document.getElementById('candidateRadioGroup');
+    const submitAnswerBtn = document.getElementById('submitAnswer');
+    const hintButton = document.getElementById('hintButton');
+    const gainDial = document.getElementById('gainDial');
+    const gainValueDisplay = document.getElementById('gainValue');
+    const qDial = document.getElementById('qDial');
+    const qValueDisplay = document.getElementById('qValue');
+    const difficultyDial = document.getElementById('difficultyDial');
+    const difficultyValueDisplay = document.getElementById('difficultyValue');
+    const outputGainDial = document.getElementById('outputGainDial');
+    const outputGainValueDisplay = document.getElementById('outputGainValue');
+    const lowerLimitSlider = document.getElementById("lowerLimitSlider");
+    const lowerLimitValueDisplay = document.getElementById("lowerLimitValue");
+    const upperLimitSlider = document.getElementById("upperLimitSlider");
+    const upperLimitValueDisplay = document.getElementById("upperLimitValue");
+    const messageDiv = document.getElementById('message');
+    const eqCurveCanvas = document.getElementById('eqCurve');
+    const eqCurveCtx = eqCurveCanvas.getContext('2d');
+    const gainMeterCanvas = document.getElementById('gainMeterCanvas');
+    const gainMeterCtx = gainMeterCanvas.getContext('2d');
+
+    // Aggiorna i nuovi slider (limite inferiore e superiore)
+    lowerLimitSlider.addEventListener("input", () => {
+      let val = Math.pow(10, parseFloat(lowerLimitSlider.value));
+      lowerLimitValueDisplay.textContent = "Min " + Math.round(val) + " Hz";
+    });
+    upperLimitSlider.addEventListener("input", () => {
+      let val = Math.pow(10, parseFloat(upperLimitSlider.value));
+      upperLimitValueDisplay.textContent = "Max " + Math.round(val) + " Hz";
+    });
+
+    // Aggiornamento Output Gain dial
+    outputGainDial.addEventListener('input', () => {
+      outputGainValueDisplay.textContent = "Output Gain Multiplier: " + parseFloat(outputGainDial.value).toFixed(2);
+      if (outputGain) {
+        outputGain.gain.value = parseFloat(outputGainDial.value);
+      }
+    });
+
+    // Funzione per flash del background del canvas (verde per corretto, rosso per sbagliato)
+    function flashCanvas(color, duration) {
+      eqCurveCanvas.style.backgroundColor = color;
+      setTimeout(() => {
+        eqCurveCanvas.style.backgroundColor = "#fff";
+      }, duration);
+    }
+
+    // Aggiornamento slider Gain
+    gainDial.addEventListener('input', () => {
+      gainValueDisplay.textContent = "Gain " + gainDial.value + " dB";
+      if (eqQuestionFilter) {
+        eqQuestionFilter.gain.value = parseFloat(gainDial.value);
+      }
+      if (eqAnswerFilter) {
+        eqAnswerFilter.gain.value = parseFloat(gainDial.value);
+      }
+      updateEQCurve();
+    });
+
+    // Aggiornamento slider Q
+    qDial.addEventListener('input', () => {
+      qValueDisplay.textContent = "Q " + qDial.value;
+      if (eqQuestionFilter) {
+        eqQuestionFilter.Q.value = parseFloat(qDial.value);
+      }
+      if (eqAnswerFilter) {
+        eqAnswerFilter.Q.value = parseFloat(qDial.value);
+      }
+      updateEQCurve();
+    });
+
+    // Aggiornamento slider Difficoltà
+    difficultyDial.addEventListener('input', () => {
+      let val = parseFloat(difficultyDial.value);
+      let label = "Medio";
+      if (val < 0.33) label = "Facile";
+      else if (val > 0.66) label = "Difficile";
+      difficultyValueDisplay.textContent = "Difficoltà: " + label;
+      if (audioElement) generateTrial();
+    });
+
+    // Caricamento file audio
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileURL = URL.createObjectURL(file);
+
+      if (!audioElement) {
+        audioElement = new Audio();
+        audioElement.crossOrigin = "anonymous";
+        audioElement.loop = true;
+      }
+      audioElement.src = fileURL;
+
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        mediaSource = audioContext.createMediaElementSource(audioElement);
+
+        // Creazione dei nodi per le branche
+        flatGain = audioContext.createGain();
+        flatGain.gain.value = 1;
+
+        eqQuestionFilter = audioContext.createBiquadFilter();
+        eqQuestionFilter.type = "peaking";
+        eqQuestionFilter.Q.value = parseFloat(qDial.value);
+        eqQuestionFilter.gain.value = parseFloat(gainDial.value);
+        eqQuestionGain = audioContext.createGain();
+        eqQuestionGain.gain.value = 0;
+
+        eqAnswerFilter = audioContext.createBiquadFilter();
+        eqAnswerFilter.type = "peaking";
+        eqAnswerFilter.Q.value = parseFloat(qDial.value);
+        eqAnswerFilter.gain.value = parseFloat(gainDial.value);
+        eqAnswerGain = audioContext.createGain();
+        eqAnswerGain.gain.value = 0;
+
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = 1;
+
+        // Nodo per l'output gain
+        outputGain = audioContext.createGain();
+        outputGain.gain.value = parseFloat(outputGainDial.value);
+
+        // Nodo per il gain meter
+        meterAnalyser = audioContext.createAnalyser();
+        meterAnalyser.fftSize = 256;
+
+        // Catena: mediaSource → [flatGain, eqQuestionFilter, eqAnswerFilter] → masterGain → outputGain → meterAnalyser → destination
+        mediaSource.connect(flatGain);
+        mediaSource.connect(eqQuestionFilter);
+        mediaSource.connect(eqAnswerFilter);
+
+        eqQuestionFilter.connect(eqQuestionGain);
+        eqAnswerFilter.connect(eqAnswerGain);
+
+        flatGain.connect(masterGain);
+        eqQuestionGain.connect(masterGain);
+        eqAnswerGain.connect(masterGain);
+        masterGain.connect(outputGain);
+        outputGain.connect(meterAnalyser);
+        meterAnalyser.connect(audioContext.destination);
+
+        updateGainMeter();
+      }
+
+      showMessage("Brano caricato. Premi Play per ascoltare.");
+      generateTrial();
+    });
+
+    // Controlli di riproduzione
+    playButton.addEventListener('click', () => {
+      if (!audioElement) return;
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      audioElement.play();
+      isPlaying = true;
+    });
+    pauseButton.addEventListener('click', () => {
+      if (!audioElement) return;
+      audioElement.pause();
+      isPlaying = false;
+    });
+    stopButton.addEventListener('click', () => {
+      if (!audioElement) return;
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      isPlaying = false;
+    });
+
+    // Modalità processing: radio custom
+    document.querySelectorAll('input[name="processingMode"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        let mode = radio.value;
+        currentMode = mode;
+        setMode(mode);
+      });
+    });
+
+    function updateProcessingModeStyles() {
+      document.querySelectorAll('input[name="processingMode"]').forEach(radio => {
+        radio.parentElement.classList.toggle("checked", radio.checked);
+      });
+    }
+
+    function updateCandidateRadioStyles() {
+      document.querySelectorAll('input[name="candidate"]').forEach(radio => {
+        const isSelected = radio.checked;
+        const label = radio.parentElement;
+        label.classList.remove("checked");
+        label.style.backgroundColor = "";
+        label.style.color = "";
+        if (isSelected) {
+          if (currentMode === "EQQuestion" || currentMode === "flat") {
+            label.style.backgroundColor = "#777";
+            label.style.color = "white";
+          } else {
+            label.classList.add("checked");
+          }
+        }
+      });
+    }
+
+    function setMode(mode) {
+      let now = audioContext.currentTime;
+      currentMode = mode;
+      if (mode === "flat") {
+        flatGain.gain.cancelScheduledValues(now);
+        flatGain.gain.linearRampToValueAtTime(1, now + 0.1);
+        eqQuestionGain.gain.cancelScheduledValues(now);
+        eqQuestionGain.gain.linearRampToValueAtTime(0, now + 0.1);
+        eqAnswerGain.gain.cancelScheduledValues(now);
+        eqAnswerGain.gain.linearRampToValueAtTime(0, now + 0.1);
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.linearRampToValueAtTime(1, now + 0.1);
+      } else if (mode === "EQQuestion") {
+        flatGain.gain.cancelScheduledValues(now);
+        flatGain.gain.linearRampToValueAtTime(0, now + 0.1);
+        eqQuestionGain.gain.cancelScheduledValues(now);
+        eqQuestionGain.gain.linearRampToValueAtTime(1, now + 0.1);
+        eqAnswerGain.gain.cancelScheduledValues(now);
+        eqAnswerGain.gain.linearRampToValueAtTime(0, now + 0.1);
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.linearRampToValueAtTime(1, now + 0.1);
+      } else if (mode === "EQAnswer") {
+        if (selectedCandidate !== null) {
+          eqAnswerFilter.frequency.value = selectedCandidate;
+          flatGain.gain.cancelScheduledValues(now);
+          flatGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          eqQuestionGain.gain.cancelScheduledValues(now);
+          eqQuestionGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          eqAnswerGain.gain.cancelScheduledValues(now);
+          eqAnswerGain.gain.linearRampToValueAtTime(1, now + 0.1);
+          masterGain.gain.cancelScheduledValues(now);
+          masterGain.gain.linearRampToValueAtTime(1, now + 0.1);
+        } else {
+          flatGain.gain.cancelScheduledValues(now);
+          flatGain.gain.linearRampToValueAtTime(1, now + 0.1);
+          eqQuestionGain.gain.cancelScheduledValues(now);
+          eqQuestionGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          eqAnswerGain.gain.cancelScheduledValues(now);
+          eqAnswerGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          masterGain.gain.cancelScheduledValues(now);
+          masterGain.gain.linearRampToValueAtTime(1, now + 0.1);
+        }
+      }
+      updateProcessingModeStyles();
+      updateCandidateRadioStyles();
+      updateEQCurve();
+    }
+
+    function applyEQAnswerFilter() {
+      if (selectedCandidate !== null) {
+        eqAnswerFilter.frequency.value = selectedCandidate;
+        eqAnswerFilter.Q.value = parseFloat(qDial.value);
+        eqAnswerFilter.gain.value = parseFloat(gainDial.value);
+        if (currentMode === "EQAnswer") {
+          let now = audioContext.currentTime;
+          flatGain.gain.cancelScheduledValues(now);
+          flatGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          eqQuestionGain.gain.cancelScheduledValues(now);
+          eqQuestionGain.gain.linearRampToValueAtTime(0, now + 0.1);
+          eqAnswerGain.gain.cancelScheduledValues(now);
+          eqAnswerGain.gain.linearRampToValueAtTime(1, now + 0.1);
+          masterGain.gain.cancelScheduledValues(now);
+          masterGain.gain.linearRampToValueAtTime(0.8, now + 0.1);
+        }
+      }
+    }
+
+    function generateTrial() {
+      const lowerLimit = Math.pow(10, parseFloat(lowerLimitSlider.value));
+      const upperLimit = Math.pow(10, parseFloat(upperLimitSlider.value));
+      
+      let difficulty = parseFloat(difficultyDial.value);
+      let candidateRange = (1 - difficulty) * SPREAD_EASY + difficulty * SPREAD_DIFFICULT;
+
+      let validTrial = false;
+      while (!validTrial) {
+        let logMin = Math.log(lowerLimit);
+        let logMax = Math.log(upperLimit);
+        let baseFrequency = Math.exp(Math.random() * (logMax - logMin) + logMin);
+
+        candidateFrequencies = [];
+        for (let i = 0; i < 5; i++) {
+          let exponent = (i - 2) * (candidateRange / 4);
+          let freq = baseFrequency * Math.pow(2, exponent);
+          candidateFrequencies.push(freq);
+        }
+        candidateFrequencies.sort((a, b) => a - b);
+        validTrial = candidateFrequencies.every(freq => freq >= lowerLimit && freq <= upperLimit);
+      }
+
+      let randomIndex = Math.floor(Math.random() * candidateFrequencies.length);
+      correctFrequency = candidateFrequencies[randomIndex];
+      correctCandidateIndex = randomIndex;
+
+      if (eqQuestionFilter) eqQuestionFilter.frequency.value = correctFrequency;
+
+      updateCandidateRadios();
+      updateEQCurve();
+      showMessage("Nuova prova generata. Seleziona la frequenza corretta e invia la risposta.");
+      
+      document.querySelectorAll('input[name="candidate"]').forEach(radio => radio.checked = false);
+      selectedCandidate = null;
+
+      currentMode = "EQQuestion";
+      document.querySelector('input[name="processingMode"][value="EQQuestion"]').checked = true;
+      setMode("EQQuestion");
+    }
+
+    function updateCandidateRadios() {
+      candidateRadioGroupDiv.innerHTML = "";
+      candidateFrequencies.forEach((freq, index) => {
+        const radioId = "candidate_" + index;
+        let label = document.createElement('label');
+        label.className = "radio-btn";
+        label.htmlFor = radioId;
+
+        let radio = document.createElement('input');
+        radio.type = "radio";
+        radio.name = "candidate";
+        radio.id = radioId;
+        radio.value = freq;
+        radio.checked = selectedCandidate !== null && Math.abs(freq - selectedCandidate) < (0.01 * freq);
+
+        function candidateSelected() {
+          selectedCandidate = parseFloat(radio.value);
+          updateCandidateRadioStyles();
+          updateEQCurve();
+          if (currentMode === "EQAnswer") {
+            applyEQAnswerFilter();
+          }
+        }
+        radio.addEventListener('change', candidateSelected);
+        radio.addEventListener('click', candidateSelected);
+
+        let span = document.createElement('span');
+        span.textContent = Math.round(freq) + " Hz";
+
+        label.appendChild(radio);
+        label.appendChild(span);
+        candidateRadioGroupDiv.appendChild(label);
+      });
+      updateCandidateRadioStyles();
+    }
+
+    submitAnswerBtn.addEventListener('click', () => {
+      if (selectedCandidate === null) {
+        showMessage("Seleziona una frequenza prima di inviare la risposta.");
+        return;
+      }
+      checkAnswer();
+    });
+
+    hintButton.addEventListener('click', () => {
+      if (correctCandidateIndex === -1) return;
+      if (flashHint) return;
+      flashHint = true;
+      flashToggle = true;
+      updateEQCurve();
+      let flashInterval = setInterval(() => {
+        flashToggle = !flashToggle;
+        updateEQCurve();
+      }, 200);
+      setTimeout(() => {
+        clearInterval(flashInterval);
+        flashHint = false;
+        updateEQCurve();
+      }, 1500);
+    });
+
+    function checkAnswer() {
+      let tolerance = 0.01 * correctFrequency;
+      if (Math.abs(selectedCandidate - correctFrequency) <= tolerance) {
+        flashCanvas("rgba(0,255,0,0.4)", 1500);
+        showMessage("Giusto!");
+        setTimeout(() => {
+          showMessage("");
+          generateTrial();
+        }, 1500);
+      } else {
+        flashCanvas("rgba(255,0,0,0.4)", 1500);
+        showMessage("Sbagliato! Riprova.");
+      }
+    }
+
+    function drawGrid() {
+      const width = eqCurveCanvas.width;
+      const height = eqCurveCanvas.height;
+      const minFreq = 20;
+      const maxFreq = 20000;
+
+      eqCurveCtx.strokeStyle = "#ccc";
+      eqCurveCtx.lineWidth = 1;
+      eqCurveCtx.font = "10px sans-serif";
+      eqCurveCtx.fillStyle = "#666";
+
+      const freqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+      freqs.forEach(f => {
+        let x = (Math.log10(f) - Math.log10(minFreq)) / (Math.log10(maxFreq) - Math.log10(minFreq)) * width;
+        eqCurveCtx.beginPath();
+        eqCurveCtx.moveTo(x, 0);
+        eqCurveCtx.lineTo(x, height);
+        eqCurveCtx.stroke();
+        eqCurveCtx.fillText(f + " Hz", x + 2, height - 5);
+      });
+
+      const dbs = [-20, -10, 0, 10, 20];
+      dbs.forEach(db => {
+        let y = height - ((db + 20) / 40) * height;
+        eqCurveCtx.beginPath();
+        eqCurveCtx.moveTo(0, y);
+        eqCurveCtx.lineTo(width, y);
+        eqCurveCtx.stroke();
+        eqCurveCtx.fillText(db + " dB", 2, y - 2);
+      });
+    }
+
+    function updateEQCurve() {
+      eqCurveCtx.clearRect(0, 0, eqCurveCanvas.width, eqCurveCanvas.height);
+      drawGrid();
+
+      if (candidateFrequencies.length === 0) return;
+      const width = eqCurveCanvas.width;
+      const height = eqCurveCanvas.height;
+      const minFreq = 20;
+      const maxFreq = 20000;
+      const numPoints = 200;
+      let frequencies = new Float32Array(numPoints);
+      for (let i = 0; i < numPoints; i++) {
+        let f = minFreq * Math.pow(maxFreq / minFreq, i / (numPoints - 1));
+        frequencies[i] = f;
+      }
+
+      candidateFrequencies.forEach((freq, index) => {
+        let tempFilter = audioContext.createBiquadFilter();
+        tempFilter.type = "peaking";
+        tempFilter.frequency.value = freq;
+        tempFilter.Q.value = parseFloat(qDial.value);
+        tempFilter.gain.value = parseFloat(gainDial.value);
+
+        let magResponse = new Float32Array(numPoints);
+        let phaseResponse = new Float32Array(numPoints);
+        tempFilter.getFrequencyResponse(frequencies, magResponse, phaseResponse);
+
+        eqCurveCtx.beginPath();
+        for (let i = 0; i < numPoints; i++) {
+          let f = frequencies[i];
+          let mag = 20 * Math.log10(magResponse[i]);
+          let y = height - ((mag + 20) / 40) * height;
+          let x = (Math.log10(f) - Math.log10(minFreq)) / (Math.log10(maxFreq) - Math.log10(minFreq)) * width;
+          if (i === 0) eqCurveCtx.moveTo(x, y);
+          else eqCurveCtx.lineTo(x, y);
+        }
+
+        let color = "blue";
+        if (selectedCandidate !== null && Math.abs(freq - selectedCandidate) < (0.01 * selectedCandidate)) {
+          color = "orange";
+        }
+        let tol = 0.01 * correctFrequency;
+        if (Math.abs(freq - correctFrequency) <= tol && flashHint) {
+          color = flashToggle ? "white" : color;
+        }
+        eqCurveCtx.strokeStyle = color;
+        eqCurveCtx.lineWidth = (selectedCandidate !== null && Math.abs(freq - selectedCandidate) < (0.01 * selectedCandidate)) ? 3 : 2;
+        eqCurveCtx.stroke();
+      });
+    }
+
+    function showMessage(msg) {
+      messageDiv.textContent = msg;
+    }
+
+    function updateGainMeter() {
+      if (!meterAnalyser) return;
+      const bufferLength = meterAnalyser.fftSize;
+      const dataArray = new Uint8Array(bufferLength);
+      meterAnalyser.getByteTimeDomainData(dataArray);
+      
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        let v = dataArray[i] / 128.0 - 1.0;
+        sum += v * v;
+      }
+      
+      let rms = Math.sqrt(sum / bufferLength);
+      smoothRMS = smoothingFactor * smoothRMS + (1 - smoothingFactor) * rms;
+      
+      let dB = smoothRMS > 0 ? 20 * Math.log10(smoothRMS) : -60;
+      dB = Math.max(-60, Math.min(0, dB));
+      let normalized = (dB + 60) / 60;
+      
+      gainMeterCtx.clearRect(0, 0, gainMeterCanvas.width, gainMeterCanvas.height);
+      let meterWidth = gainMeterCanvas.width * normalized;
+      gainMeterCtx.fillStyle = (normalized > 0.9 ? "red" : "green");
+      gainMeterCtx.fillRect(0, 0, meterWidth, gainMeterCanvas.height);
+      
+      if (rms > 0.5) {
+        let currentOutput = outputGain.gain.value;
+        let reductionAmount = 0.05 * Math.min(1, (rms - 0.5) * 10);
+        let newOutput = Math.max(0.1, currentOutput - reductionAmount);
+        outputGain.gain.setValueAtTime(newOutput, audioContext.currentTime);
+        outputGainDial.value = newOutput;
+        outputGainValueDisplay.textContent = "Output Gain Multiplier: " + newOutput.toFixed(2);
+        console.log("Autogain: output reduced to " + newOutput.toFixed(2));
+      }
+      
+      requestAnimationFrame(updateGainMeter);
+    }
+    
+    // Inizializzazione di alcuni display al caricamento della pagina
+    window.addEventListener('load', () => {
+      let lowerVal = Math.pow(10, parseFloat(lowerLimitSlider.value));
+      lowerLimitValueDisplay.textContent = "Min " + Math.round(lowerVal) + " Hz";
+      let upperVal = Math.pow(10, parseFloat(upperLimitSlider.value));
+      upperLimitValueDisplay.textContent = "Max " + Math.round(upperVal) + " Hz";
+      gainValueDisplay.textContent = "Gain " + gainDial.value + " dB";
+      qValueDisplay.textContent = "Q " + qDial.value;
+    });
+  </script>
+</body>
+</html>
