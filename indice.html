@@ -4,130 +4,121 @@
   <meta charset="UTF-8">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pagina con Link</title>
-  <style>
-    /* Stile di base */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh; /* Utilizzo di min-height per consentire lo scrolling se necessario */
-      background-color: #f4f4f4;
-    }
-    .container {
-      text-align: center;
-    }
-    /* Raggruppo le sezioni e aggiungo spazio verticale */
-    .section {
-      margin-bottom: 60px;
-    }
-    /* Disposizione verticale dei bottoni */
-    .button-container {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      justify-content: center;
-      align-items: center;
-    }
-    .button {
-      padding: 15px 25px;
-      font-size: 20px;
-      text-decoration: none;
-      color: white;
-      background-color: #007BFF;
-      border-radius: 8px;
-      transition: background 0.3s ease, transform 0.2s;
-      min-width: 200px;
-      text-align: center;
-    }
-    .button:hover {
-      background-color: #0056b3;
-      transform: scale(1.05);
-    }
-    /* Responsività: adatta la larghezza dei bottoni su schermi piccoli */
-    @media (max-width: 600px) {
-      .button {
-        width: 100%;
-        max-width: 300px;
-      }
-    }
-  </style>
+  <title>Teoria Musicale</title>
+  <link rel="stylesheet" href="assets/site.css">
 </head>
-<body>
-  <div class="container">
-    <!-- Sezione Teoria -->
-    <div class="section">
-      <h1>Teoria</h1>
-      <br>
-      <div class="button-container">
-        <a href="#" class="button" id="link3">Generatore di Accordi</a>
-        <a href="#" class="button" id="link7">Generatore di Scale</a>
-        <a href="#" class="button" id="link9">Metronomo</a>
-       
+<body class="index-page">
+  <main class="site-shell">
+    <header class="index-top">
+      <div class="title-block">
+        <h1>Teoria musicale</h1>
+        <p>Studia, ascolta, prova. Tutto resta rapido da aprire anche da telefono.</p>
       </div>
-    </div>
-    <!-- Sezione Esercizi di Solfeggio -->
-    <div class="section">
-      <h1>Giochi</h1>
-      <br>
-      <div class="button-container">
-        <a href="#" class="button" id="link1">Note</a>
-        <a href="#" class="button" id="link2">Durata</a>
-        <a href="#" class="button" id="link8">Accordi</a>
-        <a href="#" class="button" id="link11">Voce Loop</a>
-       <a href="#" class="button" id="link14">EQ game</a>
-        
+      <div class="quick-note">
+        <strong>Parti da qui</strong>
+        <p>Accordi e scale per costruire, giochi per allenare orecchio e lettura.</p>
       </div>
-    </div>
-    <!-- Sezione Siti Interessanti -->
-    <div class="section">
-      <h1>Siti Interessanti</h1>
-      <br>
-      <div class="button-container">
-        <a href="#" class="button" id="link4">MidiCity</a>
-        <a href="#" class="button" id="link5">Chrome Music lab</a>
-        <a href="#" class="button" id="link6">Batteria</a>
+    </header>
 
+    <section class="tool-section" aria-labelledby="teoria-title">
+      <h2 class="section-heading" id="teoria-title">Teoria</h2>
+      <div class="tool-grid">
+        <a class="tool-card tone-blue" href="./accordi25.html">
+          <span class="tool-tag">Armonia</span>
+          <strong>Generatore di Accordi</strong>
+          <span>Tastiera, intervalli, gradi e suono.</span>
+        </a>
+        <a class="tool-card tone-yellow" href="./scale25.html">
+          <span class="tool-tag">Scale</span>
+          <strong>Generatore di Scale</strong>
+          <span>Scale, modi, gradi e accordi collegati.</span>
+        </a>
+        <a class="tool-card tone-green" href="./metronomo.html">
+          <span class="tool-tag">Tempo</span>
+          <strong>Metronomo</strong>
+          <span>BPM, tap tempo e accenti visivi.</span>
+        </a>
       </div>
-    </div>
-    <div class="section">
-      <h1>Varie</h1>
-      <br>
-      <div class="button-container">
-        <a href="#" class="button" id="link12">Disegna Accordi per Chitarra</a>
-        <a href="#" class="button" id="link13">Aggiungi Accordi a PDF</a>
-        <a href="#" class="button" id="link10">Spartiti Vuoti</a>
+    </section>
+
+    <section class="tool-section" aria-labelledby="giochi-title">
+      <h2 class="section-heading" id="giochi-title">Giochi</h2>
+      <div class="tool-grid">
+        <a class="tool-card tone-cyan" href="./solfeggio0.0game.html">
+          <img src="./notenew.png" alt="Riferimento per leggere le note sul pentagramma">
+          <strong>Note</strong>
+          <span>Lettura sul pentagramma con punteggio.</span>
+        </a>
+        <a class="tool-card tone-yellow" href="./solfeggio2.0game.html">
+          <img src="./duratenew.png" alt="Riferimento per riconoscere le durate musicali">
+          <strong>Durata</strong>
+          <span>Valori ritmici, difficolta e bonus.</span>
+        </a>
+        <a class="tool-card tone-pink" href="./indovina_accordi25.html">
+          <span class="tool-tag">Orecchio</span>
+          <strong>Accordi</strong>
+          <span>Riconoscimento armonico a tempo.</span>
+        </a>
+        <a class="tool-card tone-orange" href="./warp0.0.html">
+          <span class="tool-tag">Voce</span>
+          <strong>Voce Loop</strong>
+          <span>Registra, ripeti e cambia velocita.</span>
+        </a>
+        <a class="tool-card tone-blue" href="./eqgame0.0.html">
+          <span class="tool-tag">Audio</span>
+          <strong>EQ game</strong>
+          <span>Allena l'orecchio sulle frequenze.</span>
+        </a>
       </div>
-    </div>
-      <br>
-<a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fbradipogio.github.io%2Fteoria_musicale%2Findice.html&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visite&edge_flat=true"/></a>
+    </section>
 
-  </div>
+    <section class="tool-section" aria-labelledby="varie-title">
+      <h2 class="section-heading" id="varie-title">Varie</h2>
+      <div class="tool-grid">
+        <a class="tool-card tone-green" href="./disegna:accordi2.html">
+          <span class="tool-tag">Chitarra</span>
+          <strong>Disegna Accordi</strong>
+          <span>Diagrammi e sequenze per chitarra.</span>
+        </a>
+        <a class="tool-card tone-cyan" href="./compila:accordi2.html">
+          <span class="tool-tag">PDF</span>
+          <strong>Aggiungi Accordi a PDF</strong>
+          <span>Inserisci diagrammi sopra uno spartito.</span>
+        </a>
+        <a class="tool-card tone-yellow" href="./spartiti_vuoti.html">
+          <span class="tool-tag">Stampa</span>
+          <strong>Spartiti Vuoti</strong>
+          <span>Tab e fogli pronti da aprire.</span>
+        </a>
+      </div>
+    </section>
 
+    <section class="tool-section" aria-labelledby="link-title">
+      <h2 class="section-heading" id="link-title">Siti Interessanti</h2>
+      <div class="tool-grid">
+        <a class="tool-card" href="https://midi.city">
+          <span class="tool-tag">MIDI</span>
+          <strong>MidiCity</strong>
+          <span>Suona nel browser.</span>
+        </a>
+        <a class="tool-card" href="https://musiclab.chromeexperiments.com/Experiments">
+          <span class="tool-tag">Lab</span>
+          <strong>Chrome Music Lab</strong>
+          <span>Esperimenti musicali interattivi.</span>
+        </a>
+        <a class="tool-card" href="https://www.musicca.com/it/batteria">
+          <span class="tool-tag">Drum</span>
+          <strong>Batteria</strong>
+          <span>Pattern e pratica ritmica.</span>
+        </a>
+      </div>
+    </section>
 
-  <script>
-    // Imposto i link solo per gli elementi esistenti
-    document.getElementById("link1").href = "https://bradipogio.github.io/teoria_musicale/solfeggio0.0game.html";
-    document.getElementById("link2").href = "https://bradipogio.github.io/teoria_musicale/solfeggio2.0game.html";
-    document.getElementById("link3").href = "https://bradipogio.github.io/teoria_musicale/accordi25.html";
-    document.getElementById("link4").href = "https://midi.city";
-    document.getElementById("link5").href = "https://musiclab.chromeexperiments.com/Experiments";
-    document.getElementById("link6").href = "https://www.musicca.com/it/batteria";  
-    document.getElementById("link7").href = "https://bradipogio.github.io/teoria_musicale/scale25.html";  
-    document.getElementById("link8").href = "https://bradipogio.github.io/teoria_musicale/indovina_accordi25.html";
-    document.getElementById("link9").href = "https://bradipogio.github.io/teoria_musicale/metronomo.html";
-    document.getElementById("link10").href = "https://bradipogio.github.io/teoria_musicale/spartiti_vuoti.html";
-    document.getElementById("link11").href = "https://bradipogio.github.io/teoria_musicale/warp0.0.html";
-    document.getElementById("link11").href = "https://bradipogio.github.io/teoria_musicale/warp0.0.html";
-        document.getElementById("link12").href = "https://bradipogio.github.io/teoria_musicale/disegna:accordi2.html";
-        document.getElementById("link13").href = "https://bradipogio.github.io/teoria_musicale/compila:accordi2.html";
-        document.getElementById("link14").href = "https://bradipogio.github.io/teoria_musicale/eqgame0.0.html";
-  </script>
+    <footer class="index-footer">
+      <a href="https://hits.seeyoufarm.com" aria-label="Contatore visite">
+        <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fbradipogio.github.io%2Fteoria_musicale%2Findice.html&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visite&edge_flat=true" alt="visite">
+      </a>
+    </footer>
+  </main>
 </body>
 </html>

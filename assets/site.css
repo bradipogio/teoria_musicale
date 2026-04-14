@@ -1,0 +1,469 @@
+:root {
+  --ink: #101010;
+  --paper: #ffffff;
+  --wash: #f6f6f6;
+  --muted: #555555;
+  --blue: #147dff;
+  --blue-dark: #0758b8;
+  --yellow: #ffd633;
+  --green: #35c96e;
+  --orange: #ff8a3d;
+  --pink: #ff5c8a;
+  --cyan: #5ad7f7;
+  --shadow: 6px 6px 0 var(--ink);
+  --shadow-small: 4px 4px 0 var(--ink);
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  color: var(--ink);
+  background-color: var(--wash) !important;
+  background-image:
+    linear-gradient(#e6e6e6 1px, transparent 1px),
+    linear-gradient(90deg, #e6e6e6 1px, transparent 1px);
+  background-size: 28px 28px;
+  font-family: Arial, Helvetica, sans-serif !important;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ink) !important;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea,
+.button,
+.home-button,
+.game-button,
+.game-button2,
+.chord-button,
+.sound-button,
+.accidental-button,
+.answer-button,
+.back-button,
+.toggle-btn,
+.radio-btn,
+.radio-group label,
+.gallery a {
+  border: 3px solid var(--ink) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-small);
+  color: var(--ink);
+}
+
+button,
+.button,
+.home-button,
+.game-button,
+.game-button2,
+.chord-button,
+.sound-button,
+.accidental-button,
+.answer-button,
+.back-button,
+.toggle-btn,
+.radio-btn,
+.radio-group label {
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease !important;
+}
+
+button:hover,
+.button:hover,
+.home-button:hover,
+.game-button:hover,
+.game-button2:hover,
+.chord-button:hover,
+.sound-button:hover,
+.accidental-button:hover,
+.answer-button:hover,
+.back-button:hover,
+.toggle-btn:hover,
+.radio-btn:hover,
+.radio-group label:hover,
+.gallery a:hover {
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: translate(2px, 2px) !important;
+}
+
+button:disabled,
+.answer-button:disabled,
+.chord-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none !important;
+}
+
+input,
+select,
+textarea {
+  background: var(--paper) !important;
+  color: var(--ink) !important;
+  font: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--pink);
+  outline-offset: 3px;
+}
+
+.container,
+#config-panel,
+#controls,
+#shortcuts-panel,
+#admin-login,
+#admin-panel,
+#leaderboard-panel,
+#microphonePromptContent,
+#compositionContainer,
+#songTitleSection,
+#chordGeneratorSection,
+#sequenceSection,
+.settings-container > .container,
+.game-container > .container {
+  background: var(--paper) !important;
+  border: 3px solid var(--ink) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow);
+}
+
+.home-button,
+.back-button,
+.button,
+.chord-button,
+.accidental-button,
+.game-button,
+.game-button2 {
+  background: var(--blue) !important;
+  color: var(--paper) !important;
+}
+
+.home-button:hover,
+.back-button:hover,
+.button:hover,
+.chord-button:hover,
+.accidental-button:hover,
+.game-button:hover,
+.game-button2:hover {
+  background: var(--yellow) !important;
+  color: var(--ink) !important;
+}
+
+.chord-button.active,
+.accidental-button.active,
+.toggle-btn.active,
+.radio-btn.checked,
+.radio-group input[type="radio"]:checked + label {
+  background: var(--yellow) !important;
+  color: var(--ink) !important;
+}
+
+#startStop,
+#startGame,
+#start-game,
+#playButton,
+#activateMic,
+#view-leaderboard,
+.sound-button {
+  background: var(--green) !important;
+  color: var(--ink) !important;
+}
+
+#tapTempo,
+#toggleReference,
+#toggleMidi,
+#toggle-extra-chords,
+#toggle-extra-scales,
+#hintButton {
+  background: var(--cyan) !important;
+  color: var(--ink) !important;
+}
+
+#endGame,
+#end-game,
+#stopButton,
+#clear-leaderboard,
+#close-admin,
+#close-leaderboard {
+  background: var(--orange) !important;
+  color: var(--ink) !important;
+}
+
+#timer-container,
+#beatContainer,
+#notationWrapper,
+#waveform,
+canvas,
+.info-line,
+#scoreboard,
+#bonus-indicator,
+#final-score,
+#message {
+  border: 3px solid var(--ink) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-small);
+  background: var(--paper);
+}
+
+.info-line {
+  padding: 10px 12px !important;
+}
+
+.chord-name {
+  background: var(--cyan) !important;
+}
+
+.degrees {
+  background: var(--yellow) !important;
+}
+
+.semitones {
+  background: #f0d5ff !important;
+}
+
+input[type="range"] {
+  accent-color: var(--pink);
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none;
+}
+
+img,
+embed,
+canvas {
+  max-width: 100%;
+}
+
+.page-nav {
+  width: min(920px, 100%);
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 auto 18px;
+}
+
+.index-page {
+  margin: 0;
+  min-height: 100vh;
+  padding: 28px;
+}
+
+.site-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.index-top {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 28px;
+}
+
+.title-block,
+.quick-note {
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.title-block h1 {
+  margin: 0 0 12px;
+  font-size: 48px;
+  line-height: 0.95;
+}
+
+.title-block p,
+.quick-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.quick-note {
+  background: var(--yellow);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.quick-note strong {
+  font-size: 22px;
+}
+
+.tool-section {
+  margin: 0 0 28px;
+}
+
+.section-heading {
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--paper) !important;
+  border-radius: var(--radius);
+  font-size: 20px;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tool-card {
+  min-height: 178px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tool-card:hover {
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: translate(4px, 4px);
+}
+
+.tool-card strong {
+  display: block;
+  font-size: 25px;
+  line-height: 1.05;
+}
+
+.tool-card span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.tool-tag {
+  width: fit-content;
+  padding: 6px 9px;
+  background: var(--ink);
+  color: var(--paper) !important;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.tool-card img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.tone-blue {
+  background: var(--blue);
+  color: var(--paper);
+}
+
+.tone-blue span,
+.tone-blue .tool-tag {
+  color: var(--paper) !important;
+}
+
+.tone-yellow {
+  background: var(--yellow);
+}
+
+.tone-green {
+  background: var(--green);
+}
+
+.tone-orange {
+  background: var(--orange);
+}
+
+.tone-pink {
+  background: var(--pink);
+}
+
+.tone-cyan {
+  background: var(--cyan);
+}
+
+.index-footer {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 24px;
+}
+
+.index-footer img {
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-small);
+}
+
+@media (max-width: 860px) {
+  .index-page {
+    padding: 18px;
+  }
+
+  .index-top,
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .title-block h1 {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 560px) {
+  .title-block,
+  .quick-note,
+  .tool-card {
+    padding: 16px;
+  }
+
+  .title-block h1 {
+    font-size: 31px;
+  }
+
+  .tool-card {
+    min-height: 152px;
+  }
+
+  .tool-card strong {
+    font-size: 22px;
+  }
+}
