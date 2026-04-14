@@ -255,10 +255,10 @@
       83.33% { background-color: blue; }
       100% { background-color: red; }
     }
-    /* Pentagramma: contenitore ridotto e disegno centrato */
+    /* Pentagramma: area piu ampia e responsiva */
     #notationWrapper {
-      width: 220px;  /* area di visualizzazione */
-      height: 200px;
+      width: min(100%, 420px);
+      min-height: 280px;
       margin: 20px auto;
       border: 1px solid #ddd;
       overflow: hidden;
@@ -577,25 +577,44 @@
       "B": ["b/3", "b/4", "b/5"]
     };
     
-    // Setup di VexFlow: il pentagramma viene disegnato senza scaleFactor in un'area di 350x250
+    // Setup di VexFlow
     const VF = Vex.Flow;
     const notationDiv = document.getElementById("notation");
+    const notationWrapper = document.getElementById("notationWrapper");
+
+    function getNotationSize() {
+      const wrapperWidth = notationWrapper.clientWidth || 420;
+      const width = Math.min(420, Math.max(280, wrapperWidth));
+      return {
+        width,
+        height: Math.round(width * 0.68)
+      };
+    }
+
     function drawNoteWithPitch(pitch, clef) {
       notationDiv.innerHTML = "";
+      const size = getNotationSize();
+      notationWrapper.style.height = size.height + "px";
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
-      renderer.resize(220, 200);
+      renderer.resize(size.width, size.height);
       const context = renderer.getContext();
-      // Calcolo per centrare la stave in un'area di larghezza 350
-      const staveWidth = 180; 
-      const x = (220 - staveWidth) / 2;  // x = 85
-      const stave = new VF.Stave(x, 40, staveWidth);
+      const staveWidth = Math.round(size.width * 0.78);
+      const x = Math.round((size.width - staveWidth) / 2);
+      const y = Math.round(size.height * 0.22);
+      const stave = new VF.Stave(x, y, staveWidth);
       stave.addClef(clef).setContext(context).draw();
       const staveNote = new VF.StaveNote({ keys: [pitch], duration: "q" });
       const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
       voice.addTickable(staveNote);
-      new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 20);
+      new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 40);
       voice.draw(context, stave);
     }
+
+    window.addEventListener("resize", () => {
+      if (gameActive && currentPitch) {
+        drawNoteWithPitch(currentPitch, currentClef);
+      }
+    });
     
     function generateRandomNote() {
       const randomIndex = Math.floor(Math.random() * notes.length);
