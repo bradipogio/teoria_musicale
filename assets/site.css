@@ -317,6 +317,26 @@ canvas {
   margin: 0 auto 18px;
 }
 
+.visit-counter {
+  display: inline-flex;
+  width: fit-content;
+  margin: 18px auto;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-small);
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.visit-counter:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.visit-counter img {
+  display: block;
+}
+
 .game-page {
   padding: 20px;
 }
