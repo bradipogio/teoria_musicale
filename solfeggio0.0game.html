@@ -595,19 +595,31 @@
       notationDiv.innerHTML = "";
       const size = getNotationSize();
       notationWrapper.style.height = size.height + "px";
+      const baseWidth = 260;
+      const baseHeight = 190;
       const renderer = new VF.Renderer(notationDiv, VF.Renderer.Backends.SVG);
-      renderer.resize(size.width, size.height);
+      renderer.resize(baseWidth, baseHeight);
       const context = renderer.getContext();
-      const staveWidth = Math.round(size.width * 0.78);
-      const x = Math.round((size.width - staveWidth) / 2);
-      const y = Math.round(size.height * 0.22);
+      const staveWidth = 210;
+      const x = Math.round((baseWidth - staveWidth) / 2);
+      const y = 42;
       const stave = new VF.Stave(x, y, staveWidth);
       stave.addClef(clef).setContext(context).draw();
       const staveNote = new VF.StaveNote({ keys: [pitch], duration: "q" });
       const voice = new VF.Voice({ num_beats: 1, beat_value: 4 });
       voice.addTickable(staveNote);
-      new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 40);
+      new VF.Formatter().joinVoices([voice]).format([voice], staveWidth - 35);
       voice.draw(context, stave);
+
+      const svg = notationDiv.querySelector("svg");
+      if (svg) {
+        svg.setAttribute("viewBox", `0 0 ${baseWidth} ${baseHeight}`);
+        svg.setAttribute("width", size.width);
+        svg.setAttribute("height", size.height);
+        svg.style.width = "100%";
+        svg.style.height = "100%";
+        svg.style.display = "block";
+      }
     }
 
     window.addEventListener("resize", () => {
