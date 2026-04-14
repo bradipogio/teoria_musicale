@@ -156,7 +156,9 @@ a:focus-visible {
 .chord-button,
 .accidental-button,
 .game-button,
-.game-button2 {
+.game-button2,
+.answer-button,
+.radio-group label {
   background: var(--blue) !important;
   color: var(--paper) !important;
 }
@@ -167,7 +169,9 @@ a:focus-visible {
 .chord-button:hover,
 .accidental-button:hover,
 .game-button:hover,
-.game-button2:hover {
+.game-button2:hover,
+.answer-button:hover,
+.radio-group label:hover {
   background: var(--yellow) !important;
   color: var(--ink) !important;
 }
@@ -226,6 +230,14 @@ canvas,
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-small);
   background: var(--paper);
+}
+
+#final-score:empty {
+  display: none;
+}
+
+#final-score:not(:empty) {
+  display: block;
 }
 
 .info-line {
