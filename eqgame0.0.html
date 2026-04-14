@@ -120,13 +120,14 @@
   </style>
   <link rel="stylesheet" href="assets/site.css">
 </head>
-<body>
+<body class="game-page eq-game-page">
   <nav class="page-nav"><a href="./indice.html" class="home-button">Home</a></nav>
   
   <!-- Sezione Impostazioni -->
   <div class="settings-container">
 
     <div class="container">
+      <div class="panel-kicker">1. Carica</div>
       <h1>Allenamento EQ</h1>
 
       <label>
@@ -135,6 +136,7 @@
       </label>
     </div>
     <div class="container slider-group">
+      <div class="panel-kicker">2. Regola</div>
       <label class="slider-container">
         <span id="gainValue">Gain 10 dB</span>
         <input type="range" id="gainDial" min="-20" max="20" value="10">
@@ -157,6 +159,7 @@
       </label>
     </div>
     <div class="container">
+      <div class="panel-kicker">3. Ascolta</div>
       <label class="slider-container">
         <span id="outputGainValue">Output Gain Multiplier: 1.00</span>
         <input type="range" id="outputGainDial" min="0" max="1" step="0.01" value="1">
@@ -172,6 +175,7 @@
   <!-- Sezione Gioco -->
   <div class="game-container">
     <div class="container">
+      <div class="panel-kicker">4. Confronta</div>
       <h2>Seleziona la frequenza corretta</h2>
       <span>Scegli modalità:</span>
       <label class="radio-btn">
@@ -191,9 +195,11 @@
       <button id="hintButton">Suggerimento</button>
     </div>
     <div class="container">
+      <div class="panel-kicker">5. Curva</div>
       <canvas id="eqCurve" width="500" height="300"></canvas>
     </div>
     <div class="container">
+      <div class="panel-kicker">6. Esito</div>
       <div id="message"></div>
     </div>
   </div>
@@ -425,7 +431,7 @@
         label.style.color = "";
         if (isSelected) {
           if (currentMode === "EQQuestion" || currentMode === "flat") {
-            label.style.backgroundColor = "#777";
+            label.style.backgroundColor = "#147dff";
             label.style.color = "white";
           } else {
             label.classList.add("checked");
@@ -606,14 +612,14 @@
     function checkAnswer() {
       let tolerance = 0.01 * correctFrequency;
       if (Math.abs(selectedCandidate - correctFrequency) <= tolerance) {
-        flashCanvas("rgba(0,255,0,0.4)", 1500);
+        flashCanvas("rgba(53,201,110,0.55)", 1500);
         showMessage("Giusto!");
         setTimeout(() => {
           showMessage("");
           generateTrial();
         }, 1500);
       } else {
-        flashCanvas("rgba(255,0,0,0.4)", 1500);
+        flashCanvas("rgba(255,92,138,0.55)", 1500);
         showMessage("Sbagliato! Riprova.");
       }
     }
@@ -624,10 +630,10 @@
       const minFreq = 20;
       const maxFreq = 20000;
 
-      eqCurveCtx.strokeStyle = "#ccc";
+      eqCurveCtx.strokeStyle = "#d0d0d0";
       eqCurveCtx.lineWidth = 1;
       eqCurveCtx.font = "10px sans-serif";
-      eqCurveCtx.fillStyle = "#666";
+      eqCurveCtx.fillStyle = "#101010";
 
       const freqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
       freqs.forEach(f => {
@@ -687,13 +693,13 @@
           else eqCurveCtx.lineTo(x, y);
         }
 
-        let color = "blue";
+        let color = "#147dff";
         if (selectedCandidate !== null && Math.abs(freq - selectedCandidate) < (0.01 * selectedCandidate)) {
-          color = "orange";
+          color = "#ff5c8a";
         }
         let tol = 0.01 * correctFrequency;
         if (Math.abs(freq - correctFrequency) <= tol && flashHint) {
-          color = flashToggle ? "white" : color;
+          color = flashToggle ? "#ffd633" : color;
         }
         eqCurveCtx.strokeStyle = color;
         eqCurveCtx.lineWidth = (selectedCandidate !== null && Math.abs(freq - selectedCandidate) < (0.01 * selectedCandidate)) ? 3 : 2;
